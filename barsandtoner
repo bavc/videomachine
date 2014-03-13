@@ -10,9 +10,10 @@ fi
 
 # command-line options to set mediaid and original variables
 OPTIND=1
-while getopts ":o:" opt ; do
+while getopts ":o:x:" opt ; do
     case "${opt}" in
         o) output_dir="$OPTARG" ;;
+        x) audio_offset="$OPTARG" ;;
         *) echo "bad option -$OPTARG" ; usage ;;
         :) echo "Option -$OPTARG requires an argument" ; exit 1 ;;
     esac
@@ -27,6 +28,10 @@ if [ ! -s "$input_movie" ] ; then
 fi
 if [ ! -d "$output_dir" ] ; then
    output_dir=`dirname "$input_movie"`
+fi
+
+if [ ! "$audio_offset" ] ; then
+   audio_offset="0"
 fi
 
 bars="${stuffthisneeds_dir}/bars.mov"
