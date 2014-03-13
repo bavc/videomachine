@@ -45,17 +45,4 @@ if [ ! -s "$tone" ] ; then
    exit
 fi
 
-mkfifo bars.v
-mkfifo tone.a
-mkfifo stuff.v
-mkfifo stuff.a
-mkfifo all.v
-mkfifo all.a
-ffmpeg -i "$tone" -map 0:a:0 -f s16le -c:a pcm_s16le -ac 2 -ar 48000 - > tone.a < /dev/null &
-ffmpeg -i "$input_movie" -map 0:a:0 -f s16le -c:a pcm_s16le -ac 2 -ar 48000 - > stuff.a < /dev/null &
-ffmpeg -vsync passthrough -i "$bars" -vf "drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:draw=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*}" -map 0:v:0 -r 30000/1001 -f yuv4mpegpipe -pix_fmt yuv422p10le -strict -1 - > bars.v < /dev/null &
-{ ffmpeg -i "$input_movie" -map 0:v:0 -r 30000/1001 -f yuv4mpegpipe -pix_fmt yuv422p10le -strict -1 - < /dev/null | tail -n +2 > stuff.v ; } &
-cat tone.a stuff.a > all.a &
-cat bars.v stuff.v > all.v &
-ffmpeg -report -vsync passthrough -f yuv4mpegpipe -i all.v -f s16le -c:a pcm_s16le -ac 2 -ar 48000 -i all.a -map 0:v:0 -map 1:a:0 -c:v v210 -r 30000/1001 -timecode "00:59:15;00" -c:a pcm_s16le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyeah.mov"
-rm bars.v stuff.[av] all.[av]
+ffmpeg -i "$tone" -itsoffset "${audio_offset}" -i "$input_movie" -i "$bars" -i "$input_movie" -filter_complex "[2:v:0]drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:draw=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*},setsar=sar=0[bars];[0:a:0][1:a:0]concat=n=2:v=0:a=1[a];[bars][3:v:0]concat=n=2:v=1[v]" -map [a] -map [v] -c:v v210 -r 30000/1001 -timecode "00:59:15;00" -c:a pcm_s16le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyeah.mov"
