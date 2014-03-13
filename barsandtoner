@@ -2,15 +2,25 @@
 
 stuffthisneeds_dir=~/Documents/FFMPEG_test
 
-if [ "$#" != 1 -a "$#" != 2 ] ; then
-    echo This script needs one or two arguments.
-    echo 1. The source file
-    echo 2 \(optional\). The target folder for the output. If not provided the same folder as the source will be used.
+if [ "$#" = 0 ] ; then
+    echo "This script accepts input videos and generates outputs that include bars and tone at the head, plus a timecode track."
+    echo "Usage: $(basename ${0}) [ -o output_directory ] fileorpackage1 [ fileorpackage2 ... ]"
     exit
 fi
+
+# command-line options to set mediaid and original variables
+OPTIND=1
+while getopts ":o:" opt ; do
+    case "${opt}" in
+        o) output_dir="$OPTARG" ;;
+        *) echo "bad option -$OPTARG" ; usage ;;
+        :) echo "Option -$OPTARG requires an argument" ; exit 1 ;;
+    esac
+done
+shift $(( ${OPTIND} - 1 ))
+
 input_movie="$1"
 name=`basename "$input_movie"`
-output_dir="$2"
 if [ ! -s "$input_movie" ] ; then
    echo Hey "$input_movie" does not look like a real file.
    exit
