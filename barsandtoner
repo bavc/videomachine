@@ -1,0 +1,46 @@
+#!/bin/bash
+
+stuffthisneeds_dir=~/Documents/FFMPEG_test
+
+if [ "$#" != 1 -a "$#" != 2 ] ; then
+    echo This script needs one or two arguments.
+    echo 1. The source file
+    echo 2 \(optional\). The target folder for the output. If not provided the same folder as the source will be used.
+    exit
+fi
+input_movie="$1"
+name=`basename "$input_movie"`
+output_dir="$2"
+if [ ! -s "$input_movie" ] ; then
+   echo Hey "$input_movie" does not look like a real file.
+   exit
+fi
+if [ ! -d "$output_dir" ] ; then
+   output_dir=`dirname "$input_movie"`
+fi
+
+bars="${stuffthisneeds_dir}/bars.mov"
+tone="${stuffthisneeds_dir}/tone.wav"
+if [ ! -s "$bars" ] ; then
+   echo Hey the bars.mov file needs to be here "$bars".
+   exit
+fi
+if [ ! -s "$tone" ] ; then
+   echo Hey the tone.wav file needs to be here "$tone".
+   exit
+fi
+
+mkfifo bars.v
+mkfifo tone.a
+mkfifo stuff.v
+mkfifo stuff.a
+mkfifo all.v
+mkfifo all.a
+ffmpeg -i "$tone" -map 0:a:0 -f s16le -c:a pcm_s16le -ac 2 -ar 48000 - > tone.a < /dev/null &
+ffmpeg -i "$input_movie" -map 0:a:0 -f s16le -c:a pcm_s16le -ac 2 -ar 48000 - > stuff.a < /dev/null &
+ffmpeg -vsync passthrough -i "$bars" -vf "drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:draw=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*}" -map 0:v:0 -r 30000/1001 -f yuv4mpegpipe -pix_fmt yuv422p10le -strict -1 - > bars.v < /dev/null &
+{ ffmpeg -i "$input_movie" -map 0:v:0 -r 30000/1001 -f yuv4mpegpipe -pix_fmt yuv422p10le -strict -1 - < /dev/null | tail -n +2 > stuff.v ; } &
+cat tone.a stuff.a > all.a &
+cat bars.v stuff.v > all.v &
+ffmpeg -report -vsync passthrough -f yuv4mpegpipe -i all.v -f s16le -c:a pcm_s16le -ac 2 -ar 48000 -i all.a -map 0:v:0 -map 1:a:0 -c:v v210 -r 30000/1001 -timecode "00:59:15;00" -c:a pcm_s16le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyeah.mov"
+rm bars.v stuff.[av] all.[av]
