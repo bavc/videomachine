@@ -45,4 +45,4 @@ if [ ! -s "$tone" ] ; then
    exit
 fi
 
-ffmpeg -i "$tone" -itsoffset "${audio_offset}" -i "$input_movie" -i "$bars" -i "$input_movie" -filter_complex "[2:v:0]drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:draw=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*},setsar=sar=0[bars];[0:a:0][1:a:0]concat=n=2:v=0:a=1[a];[bars][3:v:0]concat=n=2:v=1[v]" -map [a] -map [v] -c:v v210 -r 30000/1001 -timecode "00:59:15;00" -c:a pcm_s16le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyeah.mov"
+ffmpeg -i "$tone" -i "$input_movie" -i "$bars" -itsoffset "${audio_offset}" -i "$input_movie" -filter_complex "[2:v:0]drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:draw=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*},format=yuv422p10le[bars];[bars][0:a:0][3:v:0][1:a:0]concat=n=2:v=1:a=1[v][a]" -shortest -map [a] -map [v] -c:v v210 -r 30000/1001 -timecode "00:59:15;00" -c:a pcm_s16le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyay2.mov"
