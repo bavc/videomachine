@@ -1,0 +1,72 @@
+#!/bin/bash
+# this script takes one argument which is a video file. It evaluates the audio of the file, determines the difference needed to change the audio to a certain loudness and then makes that adjustment to an output file. The video track is simply copied.
+
+# local variables
+reference=-20
+suffix="_$(basename "${0}")"
+scriptdir=$(dirname "${0}")
+
+usage(){
+    echo
+    echo "$(basename ${0}) ${version}"
+    echo "This application will use an input video file to produce an output video file where the audio is adjusted to meet an integrated loudness of ${reference}dB. If the integrated loudness of the input is already within 1dB of the target then no change will occur. The output file will be produced in the same directory as the input but be distinguished by a suffix in the filename: ${suffix}."
+    echo "Dependencies: ${dependencies[@]}"
+    echo "Usage: $(basename ${0}) file1 [ file2 ...]"
+    echo "  -h display this help"
+    echo
+    exit
+}
+[ "${#}" = 0 ] && usage
+if [ ! $(which ffmpeg) ] ; then
+    echo Hey I need ffmpeg
+    exit 1
+fi
+
+# command line arguments
+OPTIND=1
+while getopts ":h" opt ; do
+    case ${opt} in
+        h) usage ;;
+        *) echo "Invalid option: -${OPTARG}" ; exit 1 ;;
+        :) echo "Option -${OPTARG} requires an argument" ; exit 1 ;;
+    esac
+done
+shift $(( ${OPTIND} - 1 ))
+
+while [ "$*" != "" ] ; do
+    input_movie="${1}"
+    name=$(basename "${1}")
+    extension="${name#*.}"
+    
+    audio_pipe_opts=(-f s24le -ar 48000 -ac 2)
+
+    output_movie="${input_movie%.*}${suffix}.${extension}"
+    if [ -f "${output_movie}" ] ; then
+        echo "The intended output of $(basename ${0}) already exists. Skipping for now. Please delete ${output_movie} and rerun or figure out why you are trying to do this."
+    else
+        echo Checking the volume ...
+        volume_data=$(ffprobe -v error -of compact=p=0:nk=1 -show_entries frame=metadata:tags=lavfi.r128.I -f lavfi "amovie=$1,ebur128=metadata=1")
+        [ $? -ne 0 ] && { report -wt "Volume analysis for $input_movie exited with $?." ; exit ;};
+        for i in $(echo "$volume_data"); do
+            [ "$i" != "" ] && integrated_loudness="$i"
+        done
+        VOLADJ=$(echo "$reference - $integrated_loudness" | bc)
+        # test to see if adjustment is at least 1dB, else skip
+        if [ $(echo "$VOLADJ < 1" |bc) -eq 1 -a $(echo "$VOLADJ > -1" |bc) -eq 1 ] ; then
+            echo "Integrated loudness for $name is ${integrated_loudness}dB. Reference is ${reference}dB. No adjustment is needed for ${name}, skipping."
+            VOLADJ=""
+        else
+            echo "Integrated loudness for $name is ${integrated_loudness}dB. Reference is ${reference}dB. Will adjust by ${VOLADJ}dB."
+        fi
+        
+        if [ -n "${VOLADJ}" ] ; then
+            echo "Generating ${output_movie} ..."
+            echo "ffmpeg -v warning -stats -i ${input_movie} -af volume=${VOLADJ}dB -map 0:v -c:v copy -map 0:a -acodec pcm_s24be ${output_movie}"
+            ffmpeg -v warning -stats -i ${input_movie} -af volume=${VOLADJ}dB -map 0:v -c:v copy -map 0:a -c:a pcm_s24be ${output_movie}
+            echo "Done with ${name}."
+        else
+            echo "Integrated loudness for ${name} is ${integrated_loudness}dB. Reference is ${reference}. No adjustment is needed for ${name}, skipping."
+        fi
+    fi
+    shift
+done
