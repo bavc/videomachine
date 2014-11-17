@@ -1,6 +1,27 @@
 #!/bin/bash
 
-stuffthisneeds_dir=~/Documents/FFMPEG_test
+get_width(){
+    width=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep width= | cut -d = -f 2)
+}
+
+get_height(){
+    height=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep height= | cut -d = -f 2)
+}
+
+get_framerate(){
+    framerate=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep r_frame_rate= | cut -d = -f 2)
+}
+
+get_channels(){
+    channels=$(ffprobe "$1" -show_streams -select_streams a:0 2> /dev/null | grep channels= | cut -d = -f 2)
+}
+
+get_sar(){
+    sar=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep sample_aspect_ratio= | cut -d = -f 2 | sed 's|:|/|g')
+    if [ "$sar" = "0/1" ] ; then
+        sar="1/1"
+    fi
+}
 
 if [ "$#" = 0 ] ; then
     echo "This script accepts input videos and generates outputs that include bars and tone at the head, plus a timecode track."
@@ -34,15 +55,17 @@ if [ ! "$audio_offset" ] ; then
    audio_offset="0"
 fi
 
-bars="${stuffthisneeds_dir}/bars.mov"
-tone="${stuffthisneeds_dir}/tone.wav"
-if [ ! -s "$bars" ] ; then
-   echo Hey the bars.mov file needs to be here "$bars".
-   exit
-fi
-if [ ! -s "$tone" ] ; then
-   echo Hey the tone.wav file needs to be here "$tone".
-   exit
-fi
+get_width "${input_movie}"
+get_height "${input_movie}"
+get_framerate "${input_movie}"
+get_channels "${input_movie}"
+get_sar "${input_movie}"
 
-ffmpeg -i "$tone" -i "$input_movie" -i "$bars" -i "$input_movie" -filter_complex "[2:v:0]drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:draw=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*},format=yuv422p10le[bars];[bars][0:a:0][3:v:0][1:a:0]concat=n=2:v=1:a=1[v][a],[a]asetpts=PTS+${audio_offset}/TB[a1]" -shortest -map [v] -map [a1] -c:v v210 -r 30000/1001 -timecode "00:59:15;00" -c:a pcm_s24le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyay2.mov"
+ffmpeg -f lavfi -i "smptebars=s=${width}x${height}:r=${framerate}:sar=${sar}:d=40.033" \
+    -f lavfi -i "aevalsrc=0.141253*sin(1000*2*PI*t):d=40.033:s=48000:c=${channels}" \
+    -f lavfi -i "color=black:s=${width}x${height}:r=${framerate}:sar=${sar}:d=5" \
+    -f lavfi -i "aevalsrc=0:d=5:s=48000:c=${channels}" -i "${input_movie}" \
+    -filter_complex "[0:v:0][1:a:0][2:v:0][3:a:0][4:v:0][4:a:0]concat=n=3:v=1:a=1[v][a];\
+        [v]drawtext=fontsize=40:fontfile=/Library/Fonts/Courier New Bold.ttf:fontcolor=white:enable=gte(t\,30)*lt(t\,40):x=(w-text_w)/2:y=(h-text_h-line_h)/2:box=1:boxcolor=gray@0.9:text=${name%.*}[v1];\
+        [a]asetpts=PTS+${audio_offset}/TB[a1]" \
+    -map '[v1]' -map '[a1]' -shortest -c:v v210 -r 30000/1001 -metadata:s:v:0 timecode="00:59:15;00" -metadata:s:v:0 encoder="Uncompressed 10-bit 4:2:2" -c:a pcm_s24le -ac 2 -ar 48000 -y "$output_dir/${name%.*}_ohyay3.mov"
