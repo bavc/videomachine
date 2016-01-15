@@ -1,23 +1,23 @@
 #!/bin/bash
 
 get_width(){
-    width=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep width= | cut -d = -f 2)
+    width=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep "^width=" | cut -d = -f 2)
 }
 
 get_height(){
-    height=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep height= | cut -d = -f 2)
+    height=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep "^height=" | cut -d = -f 2)
 }
 
 get_framerate(){
-    framerate=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep r_frame_rate= | cut -d = -f 2)
+    framerate=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep "^r_frame_rate=" | cut -d = -f 2)
 }
 
 get_channels(){
-    channels=$(ffprobe "$1" -show_streams -select_streams a:0 2> /dev/null | grep channels= | cut -d = -f 2)
+    channels=$(ffprobe "$1" -show_streams -select_streams a:0 2> /dev/null | grep "^channels=" | cut -d = -f 2)
 }
 
 get_sar(){
-    sar=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep sample_aspect_ratio= | cut -d = -f 2 | sed 's|:|/|g')
+    sar=$(ffprobe "$1" -show_streams -select_streams v:0 2> /dev/null | grep "^sample_aspect_ratio=" | cut -d = -f 2 | sed 's|:|/|g')
     if [ "$sar" = "0/1" ] ; then
         sar="1/1"
     fi
