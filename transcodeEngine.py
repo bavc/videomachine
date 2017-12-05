@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #Version History 
-#	0.1.0 - 20171113
+#   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
 #           Can't handle non BlackMagic mediainfo files (but will fail gracefully and still make checksums)
 #           Doesn't output Rsync info as it's happening
