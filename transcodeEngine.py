@@ -12,6 +12,9 @@
 #       Puts out Rsync Output
 #       Throws mediainfo parsing errors by the field, rather than by the file
 #       No logging, no mediainfo fixing
+#   0.3.0 - 20171205
+#       Skips hidden files
+#       Creates sidecar checksum files upon request
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -93,7 +96,7 @@ def main():
 		for root, directories, filenames in os.walk(inPath):
 			for filename in filenames:
 			    tempFilePath = os.path.join(root,filename)  		    
-			    if tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not tempFilePath.startswith('.'):
+			    if tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
 			        movCount = movCount + 1
                 
 		
@@ -103,7 +106,7 @@ def main():
 			for filename in filenames:
 			    #Process the file   
 			    tempFilePath = os.path.join(root,filename) 
-			    if tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not tempFilePath.startswith('.'):
+			    if tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
 			        
 			        media_info_list.append(createMediaInfoDict(tempFilePath, inType, processDict)) # Turns the dicts into lists
 			        			        
@@ -147,7 +150,7 @@ def fileOrDir(inPath):
 #Process a single file
 def createMediaInfoDict(filePath, inType, processDict):
 	media_info_text = getMediaInfo(filePath)
-	media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'])
+	media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'])
 	return media_info_dict
 	
 #gets the Mediainfo text
@@ -158,7 +161,7 @@ def getMediaInfo(filePath):
 	return media_info
 	
 #process mediainfo object into a dict
-def parseMediaInfo(filePath, media_info_text, hashType):
+def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
 	# The following line initializes the dict. 
 	file_dict = {"Name" : "", "instantiationIdentifierDigital__c" : "", "essenceTrackDuration__c" : "", "instantiationFileSize__c" : "", "instantiationDigital__c" : "", "essenceTrackEncodingVideo__c" : "", "essenceTrackBitDepthVideo__c" : "", "essenceTrackCompressionMode__c" : "", "essenceTrackScanType__c" : "", "essenceTrackFrameRate__c" : "", "essenceTrackFrameSize__c" : "", "essenceTrackAspectRatio__c" : "", "instantiationDataRateVideo__c" : "", "instantiationDigitalColorMatrix__c" : "", "instantiationDigitalColorSpace__c" : "", "instantiationDigitalChromaSubsampling__c" : "", "instantiationDataRateAudio__c" : "", "essenceTrackBitDepthAudio__c" : "", "essenceTrackSamplingRate__c" : "", "essenceTrackEncodingAudio__c" : "", "instantiationChannelConfigDigitalLayout__c" : "", "instantiationChannelConfigurationDigital__c" : "", "messageDigest" : "", "messageDigestAlgorithm" : ""}
 	file_dict["instantiationIdentifierDigital__c"] = os.path.basename(filePath)
@@ -281,6 +284,11 @@ def parseMediaInfo(filePath, media_info_text, hashType):
 		else:
 		    file_dict["messageDigest"] = hashfile(filePath, hashType, blocksize=65536)
 		    file_dict["messageDigestAlgorithm"] = hashType	
+		    if sidecar == 1:
+		        sidecarPath = filePath + "." + hashType
+                f = open(sidecarPath,'w')
+                f.write(file_dict["messageDigest"])
+                f.close()
 	except:
 		print bcolors.FAIL + "Error creating checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
@@ -491,12 +499,13 @@ def createProcessDict(processDict):
 	processDict['createQCT'] = int(userChoiceQC)
 	
 	#Checksum Options
-	userChoiceHash = raw_input(bcolors.OKBLUE + "\nDo you want to create a Checksum for this file?\n[1] Yes \n[2] No\n\n" + bcolors.ENDC)
-	while userChoiceHash not in ("1","2"):
+	userChoiceHash = raw_input(bcolors.OKBLUE + "\nDo you want to create a Checksum for this file?\n[1] Yes \n[2] Yes + Sidecar \n[2] No \n\n" + bcolors.ENDC)
+	while userChoiceHash not in ("1","2", "3"):
 	    print bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC
-	    userChoiceHash = raw_input(bcolors.OKBLUE + "\n[1] Yes \n[2] No\n\n" + bcolors.ENDC)
+	    userChoiceHash = raw_input(bcolors.OKBLUE + "\n[1] Yes \n[2] Yes + Sidecar\n[2] No\n\n" + bcolors.ENDC)
 	createHash = int(userChoiceHash)
-	if createHash == 1:
+	if createHash == 1 or createHash == 2:
+	    processDict['sidecar'] = createHash - 1 #Create sidecar will be 0 if no sidecar, 1 if yes sidecar
 	    userChoiceHashType = raw_input(bcolors.OKGREEN + "\nWhich type of hash would you like to create?\n[1] MD5 \n[2] SHA1 \n[3] SHA256\n\n" + bcolors.ENDC)
 	    while userChoiceHashType not in ("1","2","3"):
 	        print bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC
