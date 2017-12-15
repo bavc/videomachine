@@ -15,6 +15,9 @@
 #   0.3.0 - 20171205
 #       Skips hidden files
 #       Creates sidecar checksum files upon request
+#	0.4.0 - 20171211
+#		Changed --Output=XML to --Output=OLDXML to keep up to date with latest version of Mediainfo
+#		Fixed bug where choosing No Checksum would crash it
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -156,7 +159,7 @@ def createMediaInfoDict(filePath, inType, processDict):
 #gets the Mediainfo text
 def getMediaInfo(filePath):	
 	print bcolors.OKGREEN + "Running Mediainfo and Checksums (If Selected)\n\n" + bcolors.ENDC
-	cmd = [ '/usr/local/bin/mediainfo', '-f', '--Output=XML', filePath ]
+	cmd = [ '/usr/local/bin/mediainfo', '-f', '--Output=OLDXML', filePath ]
 	media_info = subprocess.Popen( cmd, stdout=subprocess.PIPE ).communicate()[0]
 	return media_info
 	
@@ -499,10 +502,10 @@ def createProcessDict(processDict):
 	processDict['createQCT'] = int(userChoiceQC)
 	
 	#Checksum Options
-	userChoiceHash = raw_input(bcolors.OKBLUE + "\nDo you want to create a Checksum for this file?\n[1] Yes \n[2] Yes + Sidecar \n[2] No \n\n" + bcolors.ENDC)
+	userChoiceHash = raw_input(bcolors.OKBLUE + "\nDo you want to create a Checksum for this file?\n[1] Yes \n[2] Yes + Sidecar \n[3] No \n\n" + bcolors.ENDC)
 	while userChoiceHash not in ("1","2", "3"):
 	    print bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC
-	    userChoiceHash = raw_input(bcolors.OKBLUE + "\n[1] Yes \n[2] Yes + Sidecar\n[2] No\n\n" + bcolors.ENDC)
+	    userChoiceHash = raw_input(bcolors.OKBLUE + "\n[1] Yes \n[2] Yes + Sidecar\n[3] No\n\n" + bcolors.ENDC)
 	createHash = int(userChoiceHash)
 	if createHash == 1 or createHash == 2:
 	    processDict['sidecar'] = createHash - 1 #Create sidecar will be 0 if no sidecar, 1 if yes sidecar
@@ -521,6 +524,7 @@ def createProcessDict(processDict):
 	        processDict['hashType'] = "none"
 	else:
 	    processDict['hashType'] = "none"
+	    processDict['sidecar'] = ""
 	return processDict
 
 
