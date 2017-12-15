@@ -165,6 +165,7 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
 		if file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
 		    file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 4444"
 		if "ProRes" in file_dict["essenceTrackEncodingVideo__c"] and proresFlag == False:
+		    print bcolors.FAIL + "Skipping ProRes File! (run with flag -pr to parse ProRes)" + bcolors.ENDC
 		    return "prores"
 	except:
 	    print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
