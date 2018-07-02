@@ -298,10 +298,10 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
             file_dict["instantiationDigital__c"] = "MOV"
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
+            file_dict = getAudioMetadata(file_dict, filePath)
+            insertBWAV(file_dict, filePath)
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
-    file_dict = getAudioMetadata(file_dict, filePath)
-    insertBWAV(file_dict, filePath)
     try:
         file_dict["instantiationFileSize__c"] = (mi_General_Text.split("<File_size>"))[6].split("</File_size>")[0]
     except:
