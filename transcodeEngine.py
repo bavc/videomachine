@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.9.0
+#Current Version: 0.9.1
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -32,6 +32,8 @@
 #   0.9.0 - 20180629
 #       Added bext and ID3 Support
 #       Fixed presraid move so it happens after transcoding
+#   0.9.1 - 20180703
+#       Fixed bugs introduced in verion 0.9.1, added more comments
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -77,10 +79,11 @@ def main():
         print bcolors.OKBLUE +  "User output path defined as " + out_path + bcolors.ENDC
 
 
-        # This part can tell if we're processing a file or directory. Handles it accordingly
+    # This part can tell if we're processing a file or directory. Handles it accordingly
     inPath = args.i
     inType = fileOrDir(inPath)
 
+    #processDict contains the info the script needs to run each subprocess, inlcuding the options that the user selected, and the paths to the files
     processDict = {}
     processDict = createProcessDict(processDict)
 
@@ -92,12 +95,11 @@ def main():
     else:
         csv_name = args.c + ".csv"
 
-
-
     # If we are processing a single file
     if inType == "F":
         print bcolors.OKBLUE + "\nProcessing Input File: " + os.path.basename(inPath) + "\n\n" + bcolors.ENDC
 
+        #Set the paths of the CSV files
         if out_path == "":
             csv_path = os.path.dirname(inPath) + "/" + csv_name
         else:
@@ -106,16 +108,27 @@ def main():
 
         #Process as Audio
         if inPath.endswith(".wav"):
-            audioMediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
+            #Harvest mediainfo metadata, there is a subprocess in this script that inserts the BWAV metadata
+            mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
+
+            #Transcode the File
             processVideo(inPath, processDict)
-            insertID3(audioMediaInfoDict, inPath.replace(".wav","_access.mp3"))
-            #remove audio metadata from CSV Metadata Dict
-            del audioMediaInfoDict['audioMetaDict']
-            media_info_list.append(audioMediaInfoDict) # Turns the dicts into lists
+
+            #insert ID3 tags in MP3
+            insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
+
+            #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
+            del mediaInfoDict['audioMetaDict']
+            media_info_list.append(mediaInfoDict) # Turns the dicts into lists
 
         #Process As Video
         else:
-            media_info_list.append(createMediaInfoDict(inPath, inType, processDict))
+            #Harvest medaiainfo metadata
+            mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
+
+            #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
+            del mediaInfoDict['audioMetaDict']
+            media_info_list.append(mediaInfoDict)
 
             # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
             frameSize = media_info_list[0]['essenceTrackFrameSize__c']
@@ -146,6 +159,7 @@ def main():
     elif inType == "D":
         print bcolors.OKBLUE + "Processing Input Directory: " + os.path.dirname(inPath) + "\n\n" + bcolors.ENDC
 
+        #Set path of output csv file
         if out_path == "":
             csv_path = inPath + "/" + csv_name
         else:
@@ -161,6 +175,7 @@ def main():
                 if tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
                     movCount = movCount + 1
 
+        #If no MOV files are found, we're going to run as audio, so count the number of WAV files
         if movCount == 0:
             wavCount = 0
             for root, directories, filenames in os.walk(inPath):
@@ -169,7 +184,7 @@ def main():
                     if tempFilePath.endswith('.wav') and not tempFilePath.endswith('_mezzanine.wav') and not filename.startswith('.'):
                         wavCount = wavCount + 1
 
-
+        #now we walk through the directory to process each file
         for root, directories, filenames in os.walk(inPath):
             fileNum = 0
             inPathList = []
@@ -178,14 +193,18 @@ def main():
                 tempFilePath = os.path.join(root,filename)
                 #Process as Audio
                 if tempFilePath.endswith('.wav') and not tempFilePath.endswith('_mezzanine.wav') and not filename.startswith('.'):
+                    #Harvest mediainfo metadata, there is a subprocess in this script that inserts the BWAV metadata
+                    mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
 
-                    audioMediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
+                    #Transcode the file
                     processVideo(tempFilePath, processDict)
-                    insertID3(audioMediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
-                    #remove audio metadata from CSV Metadata Dict
-                    del audioMediaInfoDict['audioMetaDict']
-                    media_info_list.append(audioMediaInfoDict) # Turns the dicts into lists
 
+                    #Insert ID3 metadata into MP3
+                    insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
+
+                    #remove audio metadata from CSV Metadata Dict
+                    del mediaInfoDict['audioMetaDict']
+                    media_info_list.append(mediaInfoDict) # Turns the dicts into lists
 
                     # Add to the list of paths to be rsynced
                     inPathList.append(tempFilePath)
@@ -200,8 +219,14 @@ def main():
                 #process as video
                 elif tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
 
-                    media_info_list.append(createMediaInfoDict(tempFilePath, inType, processDict)) # Turns the dicts into lists
+                    #Harvest mediainfo metadata
+                    mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
 
+                    #remove audio metadata from CSV Metadata Dict
+                    del mediaInfoDict['audioMetaDict']
+                    media_info_list.append(mediaInfoDict) # Turns the dicts into lists
+
+                    # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
                     frameSize = media_info_list[0]['essenceTrackFrameSize__c']
                     if "486" in frameSize:
                         processDict['crop'] = 1
@@ -299,6 +324,8 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
             file_dict = getAudioMetadata(file_dict, filePath)
+
+            #This is where we insert the BWAV metadata. tag value pairs are added the medainfo dict (so we don't need to add more dicts) then rmeoved later on in the script
             insertBWAV(file_dict, filePath)
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
