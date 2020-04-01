@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.5
+#Current Version: 0.7
 #Version History
 #   0.1 - 20170707
 #       Creates a CSV file with all of the correct field names to match up with the SalesForce table. No bells or whistles. Input args suck
@@ -15,6 +15,15 @@
 #       Fixed whitespace issues
 #       Added 4 channel support
 #       Added Disney Filename support
+#   0.6 - 20180816
+#       fixed parsing to match output of transcode script
+#   0.7 - 20181108
+#       Updated parsing to better match output of transcode description
+#       Added -mkv flag for allowing MKV input
+#   0.8 - 20191219
+#       ignores files with "mezzanine" or "access" in the file name
+#       can properly parse single files
+
 
 # import modules used here -- sys is a very standard one
 import os, sys
@@ -34,6 +43,7 @@ def main():
     parser.add_argument('-i','--input',dest='i', help="the path to the input directory or files")
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional)")
     parser.add_argument('-pr','--ProRes',dest='pr',action ='store_true',default=False, help="Allows parsing of ProRes files when turned on")
+    parser.add_argument('-mkv','--Matroska',dest='mkv',action ='store_true',default=False, help="Looks only for Matroska files")
     args = parser.parse_args()
 
     #handling the input args. This is kind of a mess in this version
@@ -44,12 +54,18 @@ def main():
         print bcolors.OKBLUE +  "No output path defined, using default path" + bcolors.ENDC
         out_path = ""
 
+    #initialize master file extension in processDict
+    if args.mkv is True:
+        masterExtension = ".mkv"
+    else:
+        masterExtension = ".mov"
+
     inPath = args.i
     inType = fileOrDir(inPath)
     # This part can tell if we're processing a file or directory. Handles it accordingly
     if inType == "F":
         print "Processing Input File: " + os.path.basename(inPath)
-        media_info_list.append(createMediaInfoDict(inPath, inType))
+        media_info_list.append(createMediaInfoDict(inPath, inType, args.pr))
         if out_path == "":
             csv_path = inPath + ".mediainfo.csv"
         else:
@@ -69,7 +85,7 @@ def main():
         for root, directories, filenames in os.walk(inPath):
             for filename in filenames:
                 tempFilePath = os.path.join(root,filename)
-                if tempFilePath.endswith('.mov'):
+                if tempFilePath.endswith(masterExtension):
                     movCount = movCount + 1
 
 
@@ -78,7 +94,7 @@ def main():
             for filename in filenames:
                 #Process the file
                 tempFilePath = os.path.join(root,filename)
-                if tempFilePath.endswith('.mov') and not filename.startswith('.'):
+                if tempFilePath.endswith(masterExtension) and not filename.startswith('.') and not filename.endswith('_mezzanine' + masterExtension) and not filename.endswith('_access' + masterExtension):
 
                     #Progress bar fun
                     numFiles = movCount
@@ -156,6 +172,10 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         fileFormatTemp = (mi_General_Text.split("<Format>"))[1].split("</Format>")[0]
         if fileFormatTemp == "MPEG-4":
             file_dict["instantiationDigital__c"] = "MOV"
+        elif fileFormatTemp == "Matroska":
+            file_dict["instantiationDigital__c"] = "MKV"
+        elif fileFormatTemp == "Wave":
+            file_dict["instantiationDigital__c"] = "WAV"
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
@@ -167,17 +187,21 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
 
     try:
         file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Codec_ID>"))[1].split("</Codec_ID>")[0]
-        if file_dict["essenceTrackEncodingVideo__c"] == "apch":
+        if file_dict["essenceTrackEncodingVideo__c"] == "v210":
+            file_dict["essenceTrackEncodingVideo__c"] = "Uncompressed 10-bit (v210)"
+        elif file_dict["essenceTrackEncodingVideo__c"] == "apch":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422 HQ"
-        if file_dict["essenceTrackEncodingVideo__c"] == "apcn":
+        elif file_dict["essenceTrackEncodingVideo__c"] == "apcn":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422"
-        if file_dict["essenceTrackEncodingVideo__c"] == "apcs":
+        elif file_dict["essenceTrackEncodingVideo__c"] == "apcs":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422 LT"
-        if file_dict["essenceTrackEncodingVideo__c"] == "apco":
+        elif file_dict["essenceTrackEncodingVideo__c"] == "apco":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422 Proxy"
-        if file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
+        elif file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 4444"
-        if "ProRes" in file_dict["essenceTrackEncodingVideo__c"] and proresFlag == False:
+        elif "FFV1" in file_dict["essenceTrackEncodingVideo__c"]:
+            file_dict["essenceTrackEncodingVideo__c"] = "FFV1"
+        elif "ProRes" in file_dict["essenceTrackEncodingVideo__c"] and proresFlag == False:
             print bcolors.FAIL + "Skipping ProRes File! (run with flag -pr to parse ProRes)" + bcolors.ENDC
             return "prores"
     except:
@@ -202,6 +226,8 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Scan Type for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         file_dict["essenceTrackFrameRate__c"] = (mi_Video_Text.split("<Frame_rate>"))[1].split("</Frame_rate>")[0]
+        if file_dict["essenceTrackFrameRate__c"] == "29.970":
+            file_dict["essenceTrackFrameRate__c"] = "29.97"
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Frame Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
@@ -219,8 +245,14 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Display Aspect Rastio for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         file_dict["instantiationDataRateVideo__c"] = (mi_Video_Text.split("<Bit_rate>"))[2].split("</Bit_rate>")[0]
+        file_dict["instantiationDataRateVideo__c"] = file_dict["instantiationDataRateVideo__c"].replace("/","p")
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        #this catches the overall bitrate of FFV1 files. It's a bit of a fudge, but gets the point across
+        try:
+            file_dict["instantiationDataRateVideo__c"] = (mi_General_Text.split("<Overall_bit_rate>"))[2].split("</Overall_bit_rate>")[0]
+            file_dict["instantiationDataRateVideo__c"] = file_dict["instantiationDataRateVideo__c"].replace("/","p")
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         file_dict["instantiationDigitalColorMatrix__c"] = (mi_Video_Text.split("<Color_primaries>"))[1].split("</Color_primaries>")[0]
     except:
@@ -242,15 +274,16 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
 
         # Audio Stuff
     try:
-        file_dict["instantiationDataRateAudio__c"] = (mi_Audio_Text.split("<Bit_rate>"))[1].split("</Bit_rate>")[0]
-    except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
-    try:
         file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Resolution>"))[1].split("</Resolution>")[0]
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
-        file_dict["essenceTrackSamplingRate__c"] = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
+        samplingRate = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
+        if samplingRate == "44100":
+            samplingRate = "44.1"
+        else:
+            samplingRate = int(samplingRate)/1000
+        file_dict["essenceTrackSamplingRate__c"] = str(samplingRate) + " kHz"
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Sampling Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
@@ -260,13 +293,26 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
-        file_dict["instantiationChannelConfigDigitalLayout__c"] = (mi_Audio_Text.split("<Channel_s_>"))[2].split("</Channel_s_>")[0]
+        audioDataRate = (mi_Audio_Text.split("<Bit_rate>"))[1].split("</Bit_rate>")[0]
+        audioDataRate = int(audioDataRate)/1000
+        file_dict["instantiationDataRateAudio__c"] = str(audioDataRate) + " Kbps"
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Channel Layout for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        try:
+            if file_dict["essenceTrackSamplingRate__c"] == "48 kHz" and file_dict["essenceTrackBitDepthAudio__c"] == "24":
+                file_dict["instantiationDataRateAudio__c"] = "2304 Kbps"
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
-        file_dict["instantiationChannelConfigurationDigital__c"] = (mi_Audio_Text.split("<ChannelLayout>"))[1].split("</ChannelLayout>")[0]
+        file_dict["instantiationChannelConfigurationDigital__c"] = (mi_Audio_Text.split("<Channel_s_>"))[2].split("</Channel_s_>")[0]
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Channel Configuration for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+    try:
+        file_dict["instantiationChannelConfigDigitalLayout__c"] = (mi_Audio_Text.split("<ChannelLayout>"))[1].split("</ChannelLayout>")[0]
+    except:
+        if file_dict["instantiationChannelConfigurationDigital__c"] == "2 channels":
+            file_dict["instantiationChannelConfigDigitalLayout__c"] = "L R"
+        else:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Channel Layout for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
         # Checksum
     try:

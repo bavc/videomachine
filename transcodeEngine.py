@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.9.1
+#Current Version: 1.1.2
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -34,6 +34,17 @@
 #       Fixed presraid move so it happens after transcoding
 #   0.9.1 - 20180703
 #       Fixed bugs introduced in verion 0.9.1, added more comments
+#   1.0.0 - 20181012
+#       Added MKV support!
+#   1.0.1 - 20181024
+#       Patched to fix itunes duration error for mp3 files! added "-write_xing 0" to audio ffmpeg string
+#   1.0.2 - Fixed typos in user interface (Derivatitves to Derivatives)
+#   1.1.0 - 20190321
+#       -Added support for DV
+#   1.1.1 - 20190321
+#       -Added support for NYU Deliverables
+#   1.1.2 - 20190419
+#       -Added support for NYU Metadata names (stripping barcodes in metadata)
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -64,6 +75,8 @@ def main():
     parser.add_argument('-i','--input',dest='i', help="the path to the input directory or files")
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional)")
     parser.add_argument('-c','--csvname',dest='c', help="the name of the csv file (optional)")
+    parser.add_argument('-mkv','--Matroska',dest='mkv',action ='store_true',default=False, help="Allows input file type to be mkv rather than default mov")
+    parser.add_argument('-dv','--DV',dest='dv',action ='store_true',default=False, help="Allows input file type to be dv rather than default mov. Processes as 720x480 rather than 720x486")
     args = parser.parse_args()
 
 
@@ -86,6 +99,14 @@ def main():
     #processDict contains the info the script needs to run each subprocess, inlcuding the options that the user selected, and the paths to the files
     processDict = {}
     processDict = createProcessDict(processDict)
+
+    #initialize master file extension in processDict
+    if args.mkv is True:
+        processDict['masterExtension'] = ".mkv"
+    elif args.dv is True:
+        processDict['masterExtension'] = ".dv"
+    else:
+        processDict['masterExtension'] = ".mov"
 
     # Initialize CSV output info
     if args.c is None:
@@ -132,7 +153,9 @@ def main():
 
             # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
             frameSize = media_info_list[0]['essenceTrackFrameSize__c']
-            if "486" in frameSize:
+            if args.dv is True:
+                processDict['crop'] = 2
+            elif "486" in frameSize:
                 processDict['crop'] = 1
             else:
                 processDict['crop'] = 2
@@ -172,10 +195,10 @@ def main():
         for root, directories, filenames in os.walk(inPath):
             for filename in filenames:
                 tempFilePath = os.path.join(root,filename)
-                if tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
+                if tempFilePath.endswith(processDict['masterExtension']) and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
                     movCount = movCount + 1
 
-        #If no MOV files are found, we're going to run as audio, so count the number of WAV files
+        #If no MOV/MKV files are found, we're going to run as audio, so count the number of WAV files
         if movCount == 0:
             wavCount = 0
             for root, directories, filenames in os.walk(inPath):
@@ -217,7 +240,7 @@ def main():
                     createCSV(media_info_list,csv_path)	# this instances process the big list of dicts
 
                 #process as video
-                elif tempFilePath.endswith('.mov') and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
+                elif tempFilePath.endswith(processDict['masterExtension']) and not tempFilePath.endswith('_mezzanine.mov') and not filename.startswith('.'):
 
                     #Harvest mediainfo metadata
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
@@ -278,7 +301,7 @@ def fileOrDir(inPath):
 #Process a single file
 def createMediaInfoDict(filePath, inType, processDict):
     media_info_text = getMediaInfo(filePath)
-    media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'])
+    media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'], processDict['masterExtension'])
     return media_info_dict
 
 #gets the Mediainfo text
@@ -289,7 +312,7 @@ def getMediaInfo(filePath):
     return media_info
 
 #process mediainfo object into a dict
-def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
+def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension):
     # The following line initializes the dict.
     file_dict = {"Name" : "", "instantiationIdentifierDigital__c" : "", "essenceTrackDuration__c" : "", "instantiationFileSize__c" : "", "instantiationDigital__c" : "", "essenceTrackEncodingVideo__c" : "", "essenceTrackBitDepthVideo__c" : "", "essenceTrackCompressionMode__c" : "", "essenceTrackScanType__c" : "", "essenceTrackFrameRate__c" : "", "essenceTrackFrameSize__c" : "", "essenceTrackAspectRatio__c" : "", "instantiationDataRateVideo__c" : "", "instantiationDigitalColorMatrix__c" : "", "instantiationDigitalColorSpace__c" : "", "instantiationDigitalChromaSubsampling__c" : "", "instantiationDataRateAudio__c" : "", "essenceTrackBitDepthAudio__c" : "", "essenceTrackSamplingRate__c" : "", "essenceTrackEncodingAudio__c" : "", "instantiationChannelConfigDigitalLayout__c" : "", "instantiationChannelConfigurationDigital__c" : "", "messageDigest" : "", "messageDigestAlgorithm" : "", "audioMetaDict" : {}}
     file_dict["instantiationIdentifierDigital__c"] = os.path.basename(filePath).split(".")[0]
@@ -297,12 +320,18 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
     try:
         barcodeTemp = str(barcodeTemp).split("_")[0]
         file_dict["Name"] = barcodeTemp.split("BAVC")[1]
+        if "WDA_" in file_dict["instantiationIdentifierDigital__c"]:
+            print bcolors.OKGREEN + "Renaming File for Disney Specs" + bcolors.ENDC
+            file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
+        elif "nyuarchives" in file_dict["instantiationIdentifierDigital__c"]:
+            print bcolors.OKGREEN + "Renaming File for NYU Specs" + bcolors.ENDC
+            file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
     except:
         print bcolors.FAIL + "Error parsing filename, No Barcode given for this file!\n\n"
 
     try:
         mi_General_Text = (media_info_text.split("<track type=\"General\">"))[1].split("</track>")[0]
-        if ".mov" in filePath:
+        if masterExtension in filePath:
             mi_Video_Text = (media_info_text.split("<track type=\"Video\">"))[1].split("</track>")[0]
         try:
             mi_Audio_Text = (media_info_text.split("<track type=\"Audio\">"))[1].split("</track>")[0]
@@ -321,6 +350,8 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
         fileFormatTemp = (mi_General_Text.split("<Format>"))[1].split("</Format>")[0]
         if fileFormatTemp == "MPEG-4":
             file_dict["instantiationDigital__c"] = "MOV"
+        elif fileFormatTemp == "Matroska":
+            file_dict["instantiationDigital__c"] = "MKV"
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
             file_dict = getAudioMetadata(file_dict, filePath)
@@ -335,9 +366,12 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse File Size for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
         # Video Stuff
-    if ".mov" in filePath:
+    if masterExtension in filePath:
         try:
-            file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Codec_ID>"))[1].split("</Codec_ID>")[0]
+            try:
+                file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Codec_ID>"))[1].split("</Codec_ID>")[0]
+            except:
+                file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Codec>"))[1].split("</Codec>")[0]
             if file_dict["essenceTrackEncodingVideo__c"] == "v210":
                 file_dict["essenceTrackEncodingVideo__c"] = "Uncompressed 10-bit (v210)"
             elif file_dict["essenceTrackEncodingVideo__c"] == "apch":
@@ -350,6 +384,12 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
                 file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422 Proxy"
             elif file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
                 file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 4444"
+            elif file_dict["essenceTrackEncodingVideo__c"] == "dv":
+                file_dict["essenceTrackEncodingVideo__c"] = "DV"
+            elif file_dict["essenceTrackEncodingVideo__c"] == "DV":
+                file_dict["essenceTrackEncodingVideo__c"] = "DV"
+            elif "FFV1" in file_dict["essenceTrackEncodingVideo__c"]:
+                file_dict["essenceTrackEncodingVideo__c"] = "FFV1"
 
         except:
             print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
@@ -389,18 +429,29 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
         try:
             file_dict["essenceTrackAspectRatio__c"] = (mi_Video_Text.split("<Display_aspect_ratio>"))[2].split("</Display_aspect_ratio>")[0]
         except:
-            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Display Aspect Rastio for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Display Aspect Ratio for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
         try:
             file_dict["instantiationDataRateVideo__c"] = (mi_Video_Text.split("<Bit_rate>"))[2].split("</Bit_rate>")[0]
             file_dict["instantiationDataRateVideo__c"] = file_dict["instantiationDataRateVideo__c"].replace("/","p")
         except:
-            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+            #this catches the overall bitrate of FFV1 files. It's a bit of a fudge, but gets the point across
+            try:
+                file_dict["instantiationDataRateVideo__c"] = (mi_General_Text.split("<Overall_bit_rate>"))[2].split("</Overall_bit_rate>")[0]
+                file_dict["instantiationDataRateVideo__c"] = file_dict["instantiationDataRateVideo__c"].replace("/","p")
+            except:
+                print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
         try:
-            file_dict["instantiationDigitalColorMatrix__c"] = (mi_Video_Text.split("<Color_primaries>"))[1].split("</Color_primaries>")[0].split(" ")[0]
+            if file_dict["essenceTrackEncodingVideo__c"] == "DV":
+                file_dict["instantiationDigitalColorMatrix__c"] = "n/a"
+            else:
+                file_dict["instantiationDigitalColorMatrix__c"] = (mi_Video_Text.split("<Color_primaries>"))[1].split("</Color_primaries>")[0].split(" ")[0]
         except:
             print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Digital Color Matrix for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
         try:
-            file_dict["instantiationDigitalColorSpace__c"] = (mi_Video_Text.split("<Color_space>"))[1].split("</Color_space>")[0]
+            if file_dict["essenceTrackEncodingVideo__c"] == "DV":
+                file_dict["instantiationDigitalColorSpace__c"] = "n/a"
+            else:
+                file_dict["instantiationDigitalColorSpace__c"] = (mi_Video_Text.split("<Color_space>"))[1].split("</Color_space>")[0]
         except:
             print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Digital Color Space for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
         try:
@@ -409,12 +460,6 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
             print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Chroma Subsampling for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
         # Audio Stuff
-    try:
-        audioDataRate = (mi_Audio_Text.split("<Bit_rate>"))[1].split("</Bit_rate>")[0]
-        audioDataRate = int(audioDataRate)/1000
-        file_dict["instantiationDataRateAudio__c"] = str(audioDataRate) + " Kbps"
-    except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Resolution>"))[1].split("</Resolution>")[0]
     except:
@@ -426,7 +471,6 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
         else:
             samplingRate = int(samplingRate)/1000
         file_dict["essenceTrackSamplingRate__c"] = str(samplingRate) + " kHz"
-
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Sampling Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
@@ -435,6 +479,16 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar):
             file_dict["essenceTrackEncodingAudio__c"] = "Linear PCM"
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+    try:
+        audioDataRate = (mi_Audio_Text.split("<Bit_rate>"))[1].split("</Bit_rate>")[0]
+        audioDataRate = int(audioDataRate)/1000
+        file_dict["instantiationDataRateAudio__c"] = str(audioDataRate) + " Kbps"
+    except:
+        try:
+            if file_dict["essenceTrackSamplingRate__c"] == "48 kHz" and file_dict["essenceTrackBitDepthAudio__c"] == "24":
+                file_dict["instantiationDataRateAudio__c"] = "2304 Kbps"
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Data Rate for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         file_dict["instantiationChannelConfigurationDigital__c"] = (mi_Audio_Text.split("<Channel_s_>"))[2].split("</Channel_s_>")[0]
     except:
@@ -501,7 +555,12 @@ def createString(inPath, processDict):
         # See if user opted to not crop MP4s
 
             if processDict['derivDetails'][derivCount]['frameSize'] == 2:
+                frameSizeString = "720x486"
                 processDict['crop'] = 2
+            elif processDict['derivDetails'][derivCount]['frameSize'] == 1:
+                frameSizeString = "640x480"
+            elif processDict['derivDetails'][derivCount]['frameSize'] == 3:
+                frameSizeString = "720x540"
 
             # Figure out the video filter string, then add to the basepath
             if processDict['crop'] == 1 and processDict['derivDetails'][derivCount]['doInterlace'] == 1: # if de-interlace and crop
@@ -542,17 +601,20 @@ def createString(inPath, processDict):
             mp3kpbs = "0"
 
         if processDict['derivDetails'][derivCount]['derivType'] == 1: # Basestring for H264/MP4
-            baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -b:v 3500000 -b:a 160000 -ar 48000 -s 640x480 "
-            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".mov","_access.mp4")
+            baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -b:v 3500000 -b:a 160000 -ar 48000 -s " + frameSizeString + " "
+            if "720x540" in baseString:
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mov")
+            else:
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
             baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le "
-            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".mov","_mezzanine.mov")
+            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_mezzanine.mov")
         elif processDict['derivDetails'][derivCount]['derivType'] == 3: # Basestring for FFv1/MKV
             baseString = " -map 0 -dn -c:v ffv1 -level 3 -coder 1 -context 1 -g 1 -slicecrc 1 -slices 24 -field_order bb -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c:a copy "
             videoFilterString = videoFilterString.replace("-vf ", "-vf setfield=bff,setdar=4/3,")
-            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".mov",".mkv")
+            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],".mkv")
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
-            baseString = " -c:a libmp3lame -b:a " + mp3kpbs + " -ac 2 "
+            baseString = " -c:a libmp3lame -b:a " + mp3kpbs + " -write_xing 0 -ac 2 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
 
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
@@ -619,10 +681,10 @@ def getAudioMetadata(file_dict, filePath):
     audioMetaDict['creationDate'] = raw_input(bcolors.OKBLUE + "Please enter the Digitization Date of this object YYYY-MM-DD: " + bcolors.ENDC)
     audioMetaDict['artistName'] = raw_input(bcolors.OKBLUE + "Please enter the Arist/Producer of this object: " + bcolors.ENDC)
     audioMetaDict['yearDate'] = audioMetaDict['fullDate'][:4]
-    userChoiceNum = raw_input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n\n " + bcolors.ENDC)
+    userChoiceNum = raw_input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n\n " + bcolors.ENDC)
     while userChoiceNum not in ("1","2","3","4","5"):
         print bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC
-        userChoiceNum = raw_input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n\n " + bcolors.ENDC)
+        userChoiceNum = raw_input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n\n " + bcolors.ENDC)
     audioMetaDict['signalChain'] = int(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
@@ -646,13 +708,15 @@ def insertBWAV(file_dict, filePath):
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
     if file_dict['audioMetaDict']['signalChain'] == 1:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=Digidesign_Digi003_apl07280038a"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
     elif file_dict['audioMetaDict']['signalChain'] == 2:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=Digidesign_Digi003_apl07280038a"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
     elif file_dict['audioMetaDict']['signalChain'] == 3:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=Digidesign_Digi003_apl07280038a"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
     elif file_dict['audioMetaDict']['signalChain'] == 4:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam-122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=Digidesign_Digi003_apl07280038a"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam-122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
+    elif file_dict['audioMetaDict']['signalChain'] == 5:
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=103540-Panasonic-SV-3700\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
     else:
         bwavCodingHistory = "n/a"
 
@@ -686,10 +750,10 @@ def RepresentsInt(s):
 # Creates the dict that holds all of the processing information
 def createProcessDict(processDict):
     #Get number of derivatives with error catching
-    userChoiceNum = raw_input(bcolors.OKBLUE + "Please enter how many Derivatitves will you be making: " + bcolors.ENDC)
+    userChoiceNum = raw_input(bcolors.OKBLUE + "Please enter how many Derivatives will you be making: " + bcolors.ENDC)
     while not RepresentsInt(userChoiceNum):
         print bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC
-        userChoiceNum = raw_input(bcolors.OKBLUE + "Please enter how many Derivatitves will you be making: " + bcolors.ENDC)
+        userChoiceNum = raw_input(bcolors.OKBLUE + "Please enter how many Derivatives will you be making: " + bcolors.ENDC)
     processDict['numDerivs'] = int(userChoiceNum)
 
     derivList = []
@@ -736,10 +800,10 @@ def createProcessDict(processDict):
             derivDetails['audioMap'] = 1
         if derivDetails['derivType'] == 1:
         #Frame Size Options for MP4
-            userChoiceSize = raw_input(bcolors.OKGREEN + "\nWhat frame size do you want the MP4 to be?\n[1] 640x480\n[2] 720x486\n\n" + bcolors.ENDC)
-            while userChoiceSize not in ("1","2"):
+            userChoiceSize = raw_input(bcolors.OKGREEN + "\nWhat frame size do you want the MP4 to be?\n[1] 640x480\n[2] 720x486\n[3] 720x540\n\n" + bcolors.ENDC)
+            while userChoiceSize not in ("1","2","3"):
                 print bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC
-                userChoiceSize = raw_input(bcolors.OKGREEN + "\n[1] 640x480\n[2] 720x486\n\n" + bcolors.ENDC)
+                userChoiceSize = raw_input(bcolors.OKGREEN + "\n[1] 640x480\n[2] 720x486\n[3] 720x540\n\n" + bcolors.ENDC)
             derivDetails['frameSize'] = int(userChoiceSize)
         else:
             derivDetails['frameSize'] = 2
