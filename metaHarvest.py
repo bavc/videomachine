@@ -23,6 +23,8 @@
 #   0.8 - 20191219
 #       ignores files with "mezzanine" or "access" in the file name
 #       can properly parse single files
+#   0.9 - 20200401
+#       Fixed support fort for DV harvesting
 
 
 # import modules used here -- sys is a very standard one
@@ -174,6 +176,8 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
             file_dict["instantiationDigital__c"] = "MOV"
         elif fileFormatTemp == "Matroska":
             file_dict["instantiationDigital__c"] = "MKV"
+        elif fileFormatTemp == "DV":
+            file_dict["instantiationDigital__c"] = "DV"
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
     except:
@@ -205,7 +209,10 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
             print bcolors.FAIL + "Skipping ProRes File! (run with flag -pr to parse ProRes)" + bcolors.ENDC
             return "prores"
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        try:
+            file_dict["essenceTrackEncodingVideo__c"] = "DV"
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         if "ProRes" in file_dict["essenceTrackEncodingVideo__c"]:
             file_dict["essenceTrackBitDepthVideo__c"] = "10 bits"
@@ -256,7 +263,9 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
     try:
         file_dict["instantiationDigitalColorMatrix__c"] = (mi_Video_Text.split("<Color_primaries>"))[1].split("</Color_primaries>")[0]
     except:
-        if "ProRes" in file_dict["essenceTrackEncodingVideo__c"]:
+        if file_dict["essenceTrackEncodingVideo__c"] == "DV":
+            file_dict["instantiationDigitalColorMatrix__c"] = "n/a"
+        elif "ProRes" in file_dict["essenceTrackEncodingVideo__c"]:
             try:
                 file_dict["instantiationDigitalColorMatrix__c"] = (mi_Video_Text.split("<Matrix_coefficients>"))[1].split("</Matrix_coefficients>")[0]
             except:
@@ -276,7 +285,10 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
     try:
         file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Resolution>"))[1].split("</Resolution>")[0]
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        try:
+            file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Bit_depth>"))[1].split("</Bit_depth>")[0]
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         samplingRate = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
         if samplingRate == "44100":
@@ -291,7 +303,10 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         if file_dict["essenceTrackEncodingAudio__c"] == "PCM":
             file_dict["essenceTrackEncodingAudio__c"] = "Linear PCM"
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        try:
+            file_dict["essenceTrackEncodingAudio__c"] = (mi_Audio_Text.split("<Format>"))[1].split("</Format>")[0]
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         audioDataRate = (mi_Audio_Text.split("<Bit_rate>"))[1].split("</Bit_rate>")[0]
         audioDataRate = int(audioDataRate)/1000

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.1.2
+#Current Version: 1.1.3
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -45,6 +45,8 @@
 #       -Added support for NYU Deliverables
 #   1.1.2 - 20190419
 #       -Added support for NYU Metadata names (stripping barcodes in metadata)
+#   1.1.3 - 20200401
+#       -Fixed metadata harvesting for DV files
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -352,6 +354,8 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
             file_dict["instantiationDigital__c"] = "MOV"
         elif fileFormatTemp == "Matroska":
             file_dict["instantiationDigital__c"] = "MKV"
+        elif fileFormatTemp == "DV":
+            file_dict["instantiationDigital__c"] = "DV"
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
             file_dict = getAudioMetadata(file_dict, filePath)
@@ -392,7 +396,10 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 file_dict["essenceTrackEncodingVideo__c"] = "FFV1"
 
         except:
-            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+            try:
+                file_dict["essenceTrackEncodingVideo__c"] = "DV"
+            except:
+                print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Video Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
         try:
             file_dict["essenceTrackBitDepthVideo__c"] = (mi_Video_Text.split("<Bit_depth>"))[2].split("</Bit_depth>")[0].split(" ")[0]
         except:
@@ -463,7 +470,10 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
     try:
         file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Resolution>"))[1].split("</Resolution>")[0]
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        try:
+            file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Bit_depth>"))[1].split("</Bit_depth>")[0]
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         samplingRate = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
         if samplingRate == "44100":
@@ -478,7 +488,10 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
         if file_dict["essenceTrackEncodingAudio__c"] == "PCM":
             file_dict["essenceTrackEncodingAudio__c"] = "Linear PCM"
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        try:
+            file_dict["essenceTrackEncodingAudio__c"] = (mi_Audio_Text.split("<Format>"))[1].split("</Format>")[0]
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Track Encoding for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         audioDataRate = (mi_Audio_Text.split("<Bit_rate>"))[1].split("</Bit_rate>")[0]
         audioDataRate = int(audioDataRate)/1000
