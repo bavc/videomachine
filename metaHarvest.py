@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.7
+#Current Version: 0.9.1
 #Version History
 #   0.1 - 20170707
 #       Creates a CSV file with all of the correct field names to match up with the SalesForce table. No bells or whistles. Input args suck
@@ -25,7 +25,8 @@
 #       can properly parse single files
 #   0.9 - 20200401
 #       Fixed support fort for DV harvesting
-
+#   0.9.1 - 20200415
+#       Fixed a big that allowed Disney ProRes files to be processed without PR flag
 
 # import modules used here -- sys is a very standard one
 import os, sys
@@ -94,20 +95,32 @@ def main():
         for root, directories, filenames in os.walk(inPath):
             fileIndex = 0
             for filename in filenames:
+                # this makes the progress bar work when prores files are omitted
+                if (args.pr == False and filename.endswith('_mezzanine' + masterExtension)):
+                    movCount = movCount - 1
+                elif (args.pr == False and filename.endswith('_pm' + masterExtension)):
+                    movCount = movCount - 1
+            for filename in filenames:
                 #Process the file
                 tempFilePath = os.path.join(root,filename)
-                if tempFilePath.endswith(masterExtension) and not filename.startswith('.') and not filename.endswith('_mezzanine' + masterExtension) and not filename.endswith('_access' + masterExtension):
-
-                    #Progress bar fun
-                    numFiles = movCount
-                    percentDone = float(float(fileIndex)/float(numFiles)*100.0)
-                    sys.stdout.write('\r')
-                    sys.stdout.write("[%-20s] %d%% %s \n" % ('='*int(percentDone/5.0), percentDone, filename))
-                    sys.stdout.flush()
-                    fileIndex = fileIndex + 1
-                    mediainfo_dict = createMediaInfoDict(tempFilePath, inType, args.pr)
-                    #will be "prores" if the file that was processed was prores. we can skip these.
-                    if mediainfo_dict != "prores" or args.pr == True:
+                if tempFilePath.endswith(masterExtension) \
+                and not filename.startswith('.') \
+                and not filename.endswith('_am' + masterExtension) \
+                and not filename.endswith('_access' + masterExtension) :
+                    # reject prores files
+                    if (args.pr == False and filename.endswith('_mezzanine' + masterExtension)):
+                        continue
+                    elif (args.pr == False and filename.endswith('_pm' + masterExtension)):
+                        continue
+                    else:
+                        #Progress bar fun
+                        numFiles = movCount
+                        percentDone = float(float(fileIndex)/float(numFiles)*100.0)
+                        sys.stdout.write('\r')
+                        sys.stdout.write("[%-20s] %d%% %s \n" % ('='*int(percentDone/5.0), percentDone, filename))
+                        sys.stdout.flush()
+                        fileIndex = fileIndex + 1
+                        mediainfo_dict = createMediaInfoDict(tempFilePath, inType, args.pr)
                         media_info_list.append(mediainfo_dict) # Turns the dicts into lists
                         createCSV(media_info_list,csv_path)	# this instances process the big list of dicts
         print "[====================] 100%% Done!\n"
