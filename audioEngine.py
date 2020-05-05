@@ -458,7 +458,7 @@ def getSFDataFromRecord(sf, sfData, barcode):
     sfDataDict['audioMD_CaptureDeck'] = sfData["records"][0].get("videoReproducingDevice__c")
     sfDeckData = querySF_Inventory(sf,sfDataDict['audioMD_CaptureDeck'])
     sfDataDict['audioMD_CaptureDeck'] = sfDeckData["records"][0].get("Name")
-    
+
     if sfDataDict['audioMD_Title'] == None:
         print(bcolors.FAIL + "ERROR: No Title Metadata Entered for Record: " + barcode + ". Quitting Script Now\n\n" + bcolors.ENDC)
     elif sfDataDict['audioMD_Artist'] == None:
@@ -502,13 +502,14 @@ def getAudioMetadata(file_dict, filePath, sf):
 def insertBWAV(file_dict, filePath):
     # Formats Descrition to "Title; Date"
     if file_dict['audioMetaDict']['fullDate'] == "" and file_dict['audioMetaDict']['title'] == "":
-        bwavDescrition = ""
+        bwavDescription = ""
     elif file_dict['audioMetaDict']['fullDate'] == "":
-        bwavDescrition = file_dict['audioMetaDict']['title']
+        bwavDescription = file_dict['audioMetaDict']['title']
     elif file_dict['audioMetaDict']['title'] == "":
-        bwavDescrition = file_dict['audioMetaDict']['fullDate']
+        bwavDescription = file_dict['audioMetaDict']['fullDate']
     else:
-        bwavDescrition = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['fullDate'] + "; " + file_dict['audioMetaDict']['album'] + "; " + file_dict['audioMetaDict']['description']
+        bwavDescription = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['fullDate'] + "; " + file_dict['audioMetaDict']['album'] + "; " + file_dict['audioMetaDict']['description']
+        bwavDescription = bwavDescription[:255]
     bwavOriginator = "BAVC"
     bwavOriginatorReference = file_dict["Name"]
     bwavOriginationDate = str(datetime.date.today())
@@ -539,7 +540,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescription + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
     runCommand(bwfString)
 
 # Inserting ID3 metadata in master audio files
