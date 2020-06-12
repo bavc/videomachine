@@ -1,6 +1,11 @@
-#!/usr/bin/env python
+#!/usr/local/bin/python3
 #hashchecker.py
 
+#Current Version: 1.0
+#Version History
+#   Old Version History is lost....
+#   1.0 - 20200612
+#       -Added shebang #!/usr/local/bin/python3 so that we don't need to pt python3 before the script
 
 #######################################################################################################################
 ###REQUIRED LIBRARIES####
