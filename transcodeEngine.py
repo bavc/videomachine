@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.2.0
+#Current Version: 1.2.3
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -58,6 +58,11 @@
 #       -scripts now checks file size of destination files agianst source files after rsync and updates salesforce field "Loaded to PresRADID" upon success!
 #   1.2.1 - 20200612
 #       -Added shebang #!/usr/local/bin/python3 so that we don't need to pt python3 before the script
+#   1.2.2 - 20200625
+#       -Changed mp4 string to include -crf 18 instead of -b:v 3500000 to get better quality out of nasty videos.
+#       -inserted setdar=3/4 string into mp4 string to force apsect ratio
+#   1.2.3 - 20201013
+#       -Hardcoded mezzanine audio sample rate to 48kHz
 #
 #   STILL NEEDS
 #       Logging
@@ -639,13 +644,14 @@ def createString(inPath, processDict):
             mp3kpbs = "0"
 
         if processDict['derivDetails'][derivCount]['derivType'] == 1: # Basestring for H264/MP4
-            baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -b:v 3500000 -b:a 160000 -ar 48000 -s " + frameSizeString + " "
+            baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -crf 18 -b:a 160000 -ar 48000 -aspect 4:3 -s " + frameSizeString + " "
+            videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=4/3,")
             if "720x540" in baseString:
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mov")
             else:
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
-            baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le "
+            baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -ar 48000 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_mezzanine.mov")
         elif processDict['derivDetails'][derivCount]['derivType'] == 3: # Basestring for FFv1/MKV
             baseString = " -map 0 -dn -c:v ffv1 -level 3 -coder 1 -context 1 -g 1 -slicecrc 1 -slices 24 -field_order bb -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c:a copy "
