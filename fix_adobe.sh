@@ -5,6 +5,30 @@
 # Arguments:
 # $1: Input File 1
 
+_usage(){
+cat <<EOF
+$(basename "${0}")
+  Usage
+   $(basename "${0}") MOVIE_FILE.mov
+
+  Explanation:
+    This script will reformat any files that come out of Adobe Premiere to match the vrecord format.
+    You should use this script on ANY file that is exported from Premiere
+
+  Options
+   -h  display this help
+
+  Input Arguments
+   MOVIE_FILE.mov: Input file
+
+  Dependencies: FFmpeg
+EOF
+}
+
+if [[ ${1} == "-h" ]]; then
+    _usage ; exit 0
+fi
+
 if [[ -f ${1} ]]; then
     printf "Input File: ${1} \n" >&2
 else

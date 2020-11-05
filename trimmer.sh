@@ -7,6 +7,32 @@
 # $2: Start timestamp in format HH:MM:SS. Use 00:00:00 for no head trim
 # $3: End timestamp in format HH:MM:SS. Use 00:00:00 for no tail trim
 
+_usage(){
+cat <<EOF
+$(basename "${0}")
+  Usage
+   $(basename "${0}") MOVIE_FILE.mov START_TIMESTAMP END_TIMESTAMP
+
+  Explanation:
+    This script will trim an input file based off the supplied Start Timestamp and End Timestamp.
+    It can be used to trim master files and mezzanien files. It will also work on access files, but may be less accurate.
+
+  Options
+   -h  display this help
+
+  Input Arguments
+   MOVIE_FILE.mov: Input file. This works on any video file.
+   START_TIMESTAMP: Start timestamp in format HH:MM:SS. Use 00:00:00 for no head trim
+   END_TIMESTAMP: End timestamp in format HH:MM:SS. Use 00:00:00 for no tail trim
+
+  Dependencies: FFmpeg
+EOF
+}
+
+if [[ ${1} == "-h" ]]; then
+    _usage ; exit 0
+fi
+
 if [ "$#" -ne 3 ]; then
     printf "ERROR: This script requires three arguments: the input file path, the start timestamp, and the end timestamp \n" >&2
     exit
