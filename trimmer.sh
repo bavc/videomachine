@@ -62,5 +62,5 @@ fi
 
 ffmpeg -ss ${2} -to ${3} -i "${1}" -movflags write_colr -c:v v210 -color_range mpeg -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c copy "${1%.*}_trimmed.mov"
 printf "\n\n*******START FFMPEG COMMANDS*******\n" >&2
-printf "ffmpge -ss ${2} -to ${3} -i '${1}' -movflags write_colr -c:v v210 -color_range mpeg -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c copy '${1%.*}_trimmed.mov' \n" >&2
+printf "ffmpeg -ss ${2} -to ${3} -i '${1}' -movflags write_colr -c:v v210 -color_range mpeg -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c copy '${1%.*}_trimmed.mov' \n" >&2
 printf "********END FFMPEG COMMANDS********\n\n " >&2
