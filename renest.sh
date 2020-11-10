@@ -31,12 +31,17 @@ if [[ -d ${inputDir} ]]; then
   printf "Processing Directory: ${inputDir} \n" >&2
 
 else
-  printf "ERROR: The inputm ust be a valid directory \n" >&2
+  printf "ERROR: The input must be a valid directory \n" >&2
   exit
 fi
 
-for filename in ${inputDir2}; do
-  #if [ -d "$file" ]; then
-      echo basename "$filename"
-  #fi
+for filepath in ${inputDir2}; do
+    fname=$(basename $filepath)
+    if [[ ${fname:0:4} = "BAVC" ]]; then
+      newPath=${inputDir}/${fname:0:11}
+      if [ ! -d $newPath ]; then
+        mkdir $newPath
+      fi
+      mv $filepath $newPath
+    fi
 done
