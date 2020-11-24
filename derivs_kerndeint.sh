@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-# Lighly transcodes adobe premiere SD/NTSC v210 files so that they conform to vrecord file specs
+# Uses the kerndeint filter to deinterlace files, this avoiding chroma flashing issues with U-matics
 
 # Arguments:
 # $1: Input File 1
-# $2: Start timestamp in format HH:MM:SS. Use 00:00:00 for no head trim
-# $3: End timestamp in format HH:MM:SS. Use 00:00:00 for no tail trim
 
 _usage(){
 cat <<EOF
@@ -14,7 +12,7 @@ $(basename "${0}")
    $(basename "${0}") MOVIE_FILE.mov
 
   Explanation:
-    This script will create a BAVC Standard Access File and Deinterlad Mezzanine File using the kerndeint filter to deinterliace
+    This script will create a BAVC Standard Access File and Deinterlad Mezzanine File using the kerndeint filter to deinterlace
 
   Options
    -h  display this help
