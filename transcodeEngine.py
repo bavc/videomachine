@@ -745,7 +745,7 @@ def getAudioMetadata(file_dict, filePath):
     userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
     while userChoiceNum not in ("1","2","3","4","5","6","7"):
         print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
-        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
+        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
     audioMetaDict['signalChain'] = int(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
