@@ -742,10 +742,10 @@ def getAudioMetadata(file_dict, filePath):
     audioMetaDict['creationDate'] = input(bcolors.OKBLUE + "Please enter the Digitization Date of this object YYYY-MM-DD: " + bcolors.ENDC)
     audioMetaDict['artistName'] = input(bcolors.OKBLUE + "Please enter the Arist/Producer of this object: " + bcolors.ENDC)
     audioMetaDict['yearDate'] = audioMetaDict['fullDate'][:4]
-    userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n\n " + bcolors.ENDC)
+    userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7]103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
     while userChoiceNum not in ("1","2","3","4","5"):
         print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
-        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n\n " + bcolors.ENDC)
+        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\\n[6] 103591-Sony-MDS-E10\n[7]103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
     audioMetaDict['signalChain'] = int(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
@@ -769,15 +769,19 @@ def insertBWAV(file_dict, filePath):
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
     if file_dict['audioMetaDict']['signalChain'] == 1:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 2:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 3:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 4:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam-122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 5:
-        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=103540-Panasonic-SV-3700\\nA=PCM,F=96000,W=24,M=stereo,T=Avid_MboxPro_9100-65007-00M"
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Panasonic_SV-3700_AA5IJ26175\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
+    elif file_dict['audioMetaDict']['signalChain'] == 6:
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-302494\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
+    elif file_dict['audioMetaDict']['signalChain'] == 6:
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-305292\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
 
