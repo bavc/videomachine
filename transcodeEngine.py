@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.2.3
+#Current Version: 1.2.4
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -63,6 +63,8 @@
 #       -inserted setdar=3/4 string into mp4 string to force apsect ratio
 #   1.2.3 - 20201013
 #       -Hardcoded mezzanine audio sample rate to 48kHz
+#   1.2.4 - 2020410
+#       -Fixed minor bug that kept coding history from working properly for second Minidisc deck
 #
 #   STILL NEEDS
 #       Logging
@@ -780,7 +782,7 @@ def insertBWAV(file_dict, filePath):
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Panasonic_SV-3700_AA5IJ26175\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 6:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-302494\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 6:
+    elif file_dict['audioMetaDict']['signalChain'] == 7:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-305292\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
