@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.2.4
+#Current Version: 1.2.5
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -65,6 +65,8 @@
 #       -Hardcoded mezzanine audio sample rate to 48kHz
 #   1.2.4 - 2020410
 #       -Fixed minor bug that kept coding history from working properly for second Minidisc deck
+#   1.2.5 - 2020429
+#       -Added Tascam DA-20 to arsenal of coding history decks
 #
 #   STILL NEEDS
 #       Logging
@@ -163,36 +165,14 @@ def main():
             #Transcode the File
             processVideo(inPath, processDict)
 
+            getSFAudioMD()
+
             #insert ID3 tags in MP3
             insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
 
             #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
             del mediaInfoDict['audioMetaDict']
             media_info_list.append(mediaInfoDict) # Turns the dicts into lists
-
-        #Process As Video
-        else:
-            #Harvest medaiainfo metadata
-            mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
-
-            #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
-            del mediaInfoDict['audioMetaDict']
-            media_info_list.append(mediaInfoDict)
-
-            # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
-            frameSize = media_info_list[0]['essenceTrackFrameSize__c']
-            if args.dv is True:
-                processDict['crop'] = 2
-            elif "486" in frameSize:
-                processDict['crop'] = 1
-            else:
-                processDict['crop'] = 2
-
-            # FFmpeg and QCTools tthe file
-            if processDict['derivDetails'] == "NoDerivs":
-                print(bcolors.OKBLUE + "User Select Zero Derivatives, Skipping Transcode Process" + "\n\n" + bcolors.ENDC)
-            else:
-                processVideo(inPath, processDict)
 
 
         # Make the mediainfo CSV
@@ -744,10 +724,10 @@ def getAudioMetadata(file_dict, filePath):
     audioMetaDict['creationDate'] = input(bcolors.OKBLUE + "Please enter the Digitization Date of this object YYYY-MM-DD: " + bcolors.ENDC)
     audioMetaDict['artistName'] = input(bcolors.OKBLUE + "Please enter the Arist/Producer of this object: " + bcolors.ENDC)
     audioMetaDict['yearDate'] = audioMetaDict['fullDate'][:4]
-    userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
-    while userChoiceNum not in ("1","2","3","4","5","6","7"):
+    userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n\n " + bcolors.ENDC)
+    while userChoiceNum not in ("1","2","3","4","5","6","7","8"):
         print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
-        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n\n " + bcolors.ENDC)
+        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n\n " + bcolors.ENDC)
     audioMetaDict['signalChain'] = int(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
@@ -784,6 +764,8 @@ def insertBWAV(file_dict, filePath):
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-302494\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 7:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-305292\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
+    elif file_dict['audioMetaDict']['signalChain'] == 8:
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=TASCAM_DA-20-50088954\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
 
@@ -859,11 +841,19 @@ def getBarcode(filepath):
     else:
         return barcode
 
-#creates the salesfroce data object
+#creates the salesforce data object
 def querySF(sf,barcode):
     result = sf.query("SELECT Id FROM Preservation_Object__c WHERE Name = '" + barcode + "'")
     return result
 
+#gets info to embed in file from the Salesforce record (WORK IN PROGRESS)
+def getSFAudioMD(sf,barcode):
+    sfData = querySF(sf,Barcode)
+    recordID = sfData['records'][0]['Id']
+    sfRecord = sf.Contact.get(recordID)
+    print(sfRecord)
+
+#checks the Loaded to PresRAID box of the record if the file is succesfully loaded to the PresRAID
 def insertLoadedData(sf,Barcode):
     sfData = querySF(sf,Barcode)
     recordID = sfData['records'][0]['Id']
