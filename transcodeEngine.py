@@ -63,10 +63,14 @@
 #       -inserted setdar=3/4 string into mp4 string to force apsect ratio
 #   1.2.3 - 20201013
 #       -Hardcoded mezzanine audio sample rate to 48kHz
-#   1.2.4 - 2020410
+#   1.2.4 - 20210410
 #       -Fixed minor bug that kept coding history from working properly for second Minidisc deck
-#   1.2.5 - 2020429
+#   1.2.5 - 20210429
 #       -Added Tascam DA-20 to arsenal of coding history decks
+#   1.3 - 20210528
+#       -HUGE UPDATE
+#       -Script now enters metadata directly from salesforce, but allowd for human entry if the salesforce fields are empty
+#       -Still to do: properly handle face02 metadata
 #
 #   STILL NEEDS
 #       Logging
@@ -164,8 +168,6 @@ def main():
 
             #Transcode the File
             processVideo(inPath, processDict)
-
-            getSFAudioMD()
 
             #insert ID3 tags in MP3
             insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
@@ -367,10 +369,18 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
             file_dict["instantiationDigital__c"] = "DV"
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
-            file_dict = getAudioMetadata(file_dict, filePath)
+            try:
+                file_dict = getAudioMetadata(file_dict, filePath, file_dict["Name"])
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not properly parse audio metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
 
             #This is where we insert the BWAV metadata. tag value pairs are added the medainfo dict (so we don't need to add more dicts) then rmeoved later on in the script
-            insertBWAV(file_dict, filePath)
+            try:
+                insertBWAV(file_dict, filePath)
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
     except:
         print(bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
     try:
@@ -715,20 +725,29 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 # Get audio metadata from user
-def getAudioMetadata(file_dict, filePath):
+def getAudioMetadata(file_dict, filePath, barcode):
 
+    #Get metadata to embed from salesforce
     audioMetaDict = {}
+    audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
     filename = os.path.basename(filePath)
-    audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ", if any (No apostrophes or quotes please!): " + bcolors.ENDC)
-    audioMetaDict['fullDate'] = input(bcolors.OKBLUE + "Please enter the Original Creation Date of this object, if any, in the format YYYY-MM-DD: " + bcolors.ENDC)
-    audioMetaDict['creationDate'] = input(bcolors.OKBLUE + "Please enter the Digitization Date of this object YYYY-MM-DD: " + bcolors.ENDC)
-    audioMetaDict['artistName'] = input(bcolors.OKBLUE + "Please enter the Arist/Producer of this object: " + bcolors.ENDC)
-    audioMetaDict['yearDate'] = audioMetaDict['fullDate'][:4]
-    userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n\n " + bcolors.ENDC)
-    while userChoiceNum not in ("1","2","3","4","5","6","7","8"):
-        print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
-        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n\n " + bcolors.ENDC)
-    audioMetaDict['signalChain'] = int(userChoiceNum)
+    if audioMetaDict['title'] == None:
+        audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ", if any (No apostrophes or quotes please!): " + bcolors.ENDC)
+    if audioMetaDict['createdDate'] == None:
+        audioMetaDict['createdDate'] = input(bcolors.OKBLUE + "Please enter the Original Creation Date of this object, if any, in the format YYYY-MM-DD: " + bcolors.ENDC)
+    if audioMetaDict['digiDate'] == None:
+        audioMetaDict['digiDate'] = input(bcolors.OKBLUE + "Please enter the Digitization Date of this object YYYY-MM-DD: " + bcolors.ENDC)
+    if audioMetaDict['artistName'] == None:
+        audioMetaDict['artistName'] = input(bcolors.OKBLUE + "Please enter the Arist/Producer of this object: " + bcolors.ENDC)
+    if audioMetaDict['albumName'] == None:
+        audioMetaDict['albumName'] = input(bcolors.OKBLUE + "Please enter the Collection/Album name of this object: " + bcolors.ENDC)
+    audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
+    if audioMetaDict['signalChain'] == None:
+        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n\n " + bcolors.ENDC)
+        while userChoiceNum not in ("1","2","3","4","5","6","7","8","9"):
+            print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
+            userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n\n " + bcolors.ENDC)
+        audioMetaDict['signalChain'] = int(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
     return file_dict
@@ -736,36 +755,71 @@ def getAudioMetadata(file_dict, filePath):
 # Inserting BWAV metadata in master audio files
 def insertBWAV(file_dict, filePath):
 
+    #Handles faces and parts for title
+    if "Face01" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Face 01"
+    if "Face02" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Face 02"
+    if "Face03" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Face 03"
+    if "Face04" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Face 04"
+    if "Part01" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 01"
+    if "Part02" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 02"
+    if "Part03" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 03"
+    if "Part04" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 04"
+    if "Part05" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 05"
+    if "Part06" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 06"
+    if "Part07" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 07"
+    if "Part08" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 08"
+    if "Part09" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 09"
+    if "Part10" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 10"
+    if "Part1" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Part 11"
+
+
     # Formats Descrition to "Title; Date"
-    if file_dict['audioMetaDict']['fullDate'] == "" and file_dict['audioMetaDict']['title'] == "":
+    if file_dict['audioMetaDict']['createdDate'] == "0001-01-01" and file_dict['audioMetaDict']['title'] == "":
         bwavDescrition = ""
-    elif file_dict['audioMetaDict']['fullDate'] == "":
+    elif file_dict['audioMetaDict']['createdDate'] == "0001-01-01":
         bwavDescrition = file_dict['audioMetaDict']['title']
     elif file_dict['audioMetaDict']['title'] == "":
-        bwavDescrition = file_dict['audioMetaDict']['fullDate']
+        bwavDescrition = file_dict['audioMetaDict']['createdDate']
     else:
-        bwavDescrition = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['fullDate']
+        bwavDescrition = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['createdDate']
     bwavOriginator = "BAVC"
     bwavOriginatorReference = file_dict["Name"]
-    bwavOriginationDate = file_dict['audioMetaDict']['creationDate']
+    bwavOriginationDate = file_dict['audioMetaDict']['digiDate']
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
-    if file_dict['audioMetaDict']['signalChain'] == 1:
+    if file_dict['audioMetaDict']['signalChain'] == 1 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000vdsd":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 2:
+    elif file_dict['audioMetaDict']['signalChain'] == 2 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000vdsd":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 3:
+    elif file_dict['audioMetaDict']['signalChain'] == 3 or file_dict['audioMetaDict']['signalChain'] == "a0N5000001c7tg0":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 4:
+    elif file_dict['audioMetaDict']['signalChain'] == 4 or file_dict['audioMetaDict']['signalChain'] == "a0N50000001mMc3":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 5:
+    elif file_dict['audioMetaDict']['signalChain'] == 5 or file_dict['audioMetaDict']['signalChain'] == "a0N2J00001zQwkV":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Panasonic_SV-3700_AA5IJ26175\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 6:
+    elif file_dict['audioMetaDict']['signalChain'] == 6 or file_dict['audioMetaDict']['signalChain'] == "a0N2J00003ZNJCI":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-302494\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 7:
+    elif file_dict['audioMetaDict']['signalChain'] == 7 or file_dict['audioMetaDict']['signalChain'] == "a0N2J00003ZNJCD":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-305292\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 8:
+    elif file_dict['audioMetaDict']['signalChain'] == 8 or file_dict['audioMetaDict']['signalChain'] == "a0N50000005yOY6":
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=TASCAM_DA-20-50088954\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
+    elif file_dict['audioMetaDict']['signalChain'] == 9 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000wCiIEAU":
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122mkiii-8x00094984\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
 
@@ -781,10 +835,11 @@ def insertBWAV(file_dict, filePath):
 def insertID3(file_dict, filePath):
 
     id3Artist = file_dict['audioMetaDict']['artistName']
+    id3Album = file_dict['audioMetaDict']['albumName']
     id3Title = file_dict['audioMetaDict']['title']
     id3Year = file_dict['audioMetaDict']['yearDate']
 
-    id3String = "id3v2 -a '" + id3Artist + "' -t '" + id3Title + "' -y '" + id3Year + "' '" + filePath + "'"
+    id3String = "id3v2 -a '" + id3Artist + "' -A '" + id3Album + "' -t '" + id3Title + "' -y '" + id3Year + "' '" + filePath + "'"
     runCommand(id3String)
 
 # Used for seeing if a string represents an integer
@@ -847,11 +902,27 @@ def querySF(sf,barcode):
     return result
 
 #gets info to embed in file from the Salesforce record (WORK IN PROGRESS)
-def getSFAudioMD(sf,barcode):
+def getSFAudioMD(Barcode, audioMetaDict):
+    sf = initSF()
     sfData = querySF(sf,Barcode)
     recordID = sfData['records'][0]['Id']
-    sfRecord = sf.Contact.get(recordID)
-    print(sfRecord)
+    sfRecord = sf.Preservation_Object__c.get(recordID)
+    audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
+    audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c')
+    audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
+    audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
+    audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
+    audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
+    return audioMetaDict
+
+#Converts dd/mm/yy to YYYY-MM-DD
+def convertDate(inDate):
+    if (inDate == None) or (inDate == ""):
+        formattedDate = "0001-01-01"
+    else:#              As far as I can tell salesforce already returns ISO-8601 so we just need the check for an empty field above
+    #    formattedDate = datetime.datetime.strptime(inDate, "%d/%m/%Y")    return formattedDate
+        formattedDate = inDate
+    return formattedDate
 
 #checks the Loaded to PresRAID box of the record if the file is succesfully loaded to the PresRAID
 def insertLoadedData(sf,Barcode):
@@ -875,7 +946,7 @@ def insertDictlist(dict_list,sf):
         #turn the string back into a JSON sturcture
         j = json.loads(dString)
         #get the record ID of the associated salesforce record
-        if (len(d['Name']) is not 7) or (not d['Name'].isdigit()):     #quick check to make surebarcode is properly formaed. If not we'll stop trying to sync to salesfroce
+        if (len(d['Name']) != 7) or (not d['Name'].isdigit()):     #quick check to make surebarcode is properly formaed. If not we'll stop trying to sync to salesforce
             print(bcolors.FAIL +  "\nSkipping Barcode Because it is malformed: " + d['Name'] + "\n" + bcolors.ENDC)
         else:
             sfData = querySF(sf,d['Name'])
