@@ -828,7 +828,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --ICRD='" + bwavOriginationDate + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
     runCommand(bwfString)
 
 # Inserting ID3 metadata in master audio files
