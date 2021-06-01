@@ -800,6 +800,10 @@ def insertBWAV(file_dict, filePath):
     bwavOriginator = "BAVC"
     bwavOriginatorReference = file_dict["Name"]
     bwavOriginationDate = file_dict['audioMetaDict']['digiDate']
+    if file_dict['audioMetaDict']['createdDate'] == "0001-01-01":
+        ICRD = ""
+    else:
+        ICRD = file_dict['audioMetaDict']['createdDate']
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
     if file_dict['audioMetaDict']['signalChain'] == 1 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000vdsd":
@@ -828,7 +832,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --ICRD='" + bwavOriginationDate + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
     runCommand(bwfString)
 
 # Inserting ID3 metadata in master audio files
