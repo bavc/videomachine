@@ -911,6 +911,7 @@ def getSFAudioMD(Barcode, audioMetaDict):
     audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c')
     audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
     audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
+    audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
     audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
     audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
     return audioMetaDict
