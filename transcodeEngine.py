@@ -806,23 +806,23 @@ def insertBWAV(file_dict, filePath):
         ICRD = file_dict['audioMetaDict']['createdDate']
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
-    if file_dict['audioMetaDict']['signalChain'] == 1 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000vdsd":
+    if file_dict['audioMetaDict']['signalChain'] == 1 or "a0N50000000vdsYEAQ" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 2 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000vdsd":
+    elif file_dict['audioMetaDict']['signalChain'] == 2 or "a0N50000000vdsd" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 3 or file_dict['audioMetaDict']['signalChain'] == "a0N5000001c7tg0":
+    elif file_dict['audioMetaDict']['signalChain'] == 3 or "a0N5000001c7tg0" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 4 or file_dict['audioMetaDict']['signalChain'] == "a0N50000001mMc3":
+    elif file_dict['audioMetaDict']['signalChain'] == 4 or "a0N50000001mMc3" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 5 or file_dict['audioMetaDict']['signalChain'] == "a0N2J00001zQwkV":
+    elif file_dict['audioMetaDict']['signalChain'] == 5 or "a0N2J00001zQwkV" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Panasonic_SV-3700_AA5IJ26175\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 6 or file_dict['audioMetaDict']['signalChain'] == "a0N2J00003ZNJCI":
+    elif file_dict['audioMetaDict']['signalChain'] == 6 or "a0N2J00003ZNJCI" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-302494\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 7 or file_dict['audioMetaDict']['signalChain'] == "a0N2J00003ZNJCD":
+    elif file_dict['audioMetaDict']['signalChain'] == 7 or "a0N2J00003ZNJCD" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-305292\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 8 or file_dict['audioMetaDict']['signalChain'] == "a0N50000005yOY6":
+    elif file_dict['audioMetaDict']['signalChain'] == 8 or "a0N50000005yOY6EAM" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=TASCAM_DA-20-50088954\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 9 or file_dict['audioMetaDict']['signalChain'] == "a0N50000000wCiIEAU":
+    elif file_dict['audioMetaDict']['signalChain'] == 9 or "a0N50000000wCiIEAU" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122mkiii-8x00094984\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
