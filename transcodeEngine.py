@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.2.5
+#Current Version: 1.3.1
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -71,6 +71,10 @@
 #       -HUGE UPDATE
 #       -Script now enters metadata directly from salesforce, but allowd for human entry if the salesforce fields are empty
 #       -Still to do: properly handle face02 metadata
+#   1.3.1 - 20210602
+#       -Fixed bugs and feature issues for audio metadata embedding
+#       -script now enters IDIT, ICRD, ICRD, ISFT, ITCH for consistency
+#       -NYU access file extension changed to "_s.mp4"
 #
 #   STILL NEEDS
 #       Logging
@@ -639,7 +643,7 @@ def createString(inPath, processDict):
             baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -crf 18 -b:a 160000 -ar 48000 -aspect 4:3 -s " + frameSizeString + " "
             videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=4/3,")
             if "720x540" in baseString:
-                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mov")
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mp4")
             else:
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
