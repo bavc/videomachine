@@ -15,13 +15,15 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
+FFMPEG_ARGS="$3"
+
 if [ $# -ne 3 ]; then
     echo 'No FFmpeg transcode parameters entered. The script will streamcopy'
+    FFMPEG_ARGS="-c copy"
 fi
 
 FILE="$1"
 SIZELIMIT="$2"
-FFMPEG_ARGS="$3"
 
 # Duration of the source video
 DURATION=$(ffprobe -i "$FILE" -show_entries format=duration -v quiet -of default=noprint_wrappers=1:nokey=1|cut -d. -f1)
