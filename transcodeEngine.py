@@ -747,10 +747,10 @@ def getAudioMetadata(file_dict, filePath, barcode):
         audioMetaDict['albumName'] = input(bcolors.OKBLUE + "Please enter the Collection/Album name of this object: " + bcolors.ENDC)
     audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
     if audioMetaDict['signalChain'] == None:
-        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n\n " + bcolors.ENDC)
-        while userChoiceNum not in ("1","2","3","4","5","6","7","8","9"):
+        userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n[10] 103628-Sony-TCD-D7\n\n " + bcolors.ENDC)
+        while userChoiceNum not in ("1","2","3","4","5","6","7","8","9","10"):
             print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
-            userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n\n " + bcolors.ENDC)
+            userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n[10] 103628-Sony-TCD-D7\n\n " + bcolors.ENDC)
         audioMetaDict['signalChain'] = int(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
@@ -828,6 +828,8 @@ def insertBWAV(file_dict, filePath):
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=TASCAM_DA-20-50088954\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == 9 or "a0N50000000wCiIEAU" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122mkiii-8x00094984\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
+    elif file_dict['audioMetaDict']['signalChain'] == 10 or "a0N2J00003b0r7U" in file_dict['audioMetaDict']['signalChain']:
+        bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_TCD-D7\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
 
