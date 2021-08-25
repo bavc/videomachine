@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.3.1
+#Current Version: 1.3.2
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -75,6 +75,9 @@
 #       -Fixed bugs and feature issues for audio metadata embedding
 #       -script now enters IDIT, ICRD, ICRD, ISFT, ITCH for consistency
 #       -NYU access file extension changed to "_s.mp4"
+#   1.3.2 - 20210825
+#       -Script now uses dvrescue automatically on dv in .mov files that it gets, no longer running QCTools on these files
+#       -Fixed bugs causing script not to work on a single file
 #
 #   STILL NEEDS
 #       Logging
@@ -171,7 +174,7 @@ def main():
             mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
 
             #Transcode the File
-            processVideo(inPath, processDict)
+            processVideo(inPath, processDict, "WAV")
 
             #insert ID3 tags in MP3
             insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
@@ -179,6 +182,32 @@ def main():
             #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
             del mediaInfoDict['audioMetaDict']
             media_info_list.append(mediaInfoDict) # Turns the dicts into lists
+
+        else:
+            #Harvest mediainfo metadata
+            mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
+
+            #remove audio metadata from CSV Metadata Dict
+            del mediaInfoDict['audioMetaDict']
+            media_info_list.append(mediaInfoDict) # Turns the dicts into lists
+
+            # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
+            frameSize = media_info_list[0]['essenceTrackFrameSize__c']
+            if "486" in frameSize:
+                processDict['crop'] = 1
+            else:
+                processDict['crop'] = 2
+
+            # FFmpeg and QCTools the file
+            if processDict['numDerivs'] == 0:
+                print(bcolors.OKBLUE + "User Select Zero Derivatives, Skipping Transcode of " + os.path.basename(inPath) + "\n\n" + bcolors.ENDC)
+                if processDict['createQCT'] == 1:
+                    if "dv" in media_info_list[0]["essenceTrackEncodingVideo__c"] or "DV" in media_info_list[0]["essenceTrackEncodingVideo__c"]:
+                        runCommand("dvrescue '" + inPath + "' -x '" + inPath + ".dvrescue.xml' -c '" + inPath + ".dvrescue.scc' -s '" + inPath + ".dvrescue.vtt'")
+                    else:
+                        runCommand("qcli -i '" + inPath + "'")
+            else:
+                processVideo(inPath, processDict, media_info_list[0]["essenceTrackEncodingVideo__c"])
 
 
         # Make the mediainfo CSV
@@ -237,7 +266,7 @@ def main():
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
 
                     #Transcode the file
-                    processVideo(tempFilePath, processDict)
+                    processVideo(tempFilePath, processDict, videoCodec)
 
                     #Insert ID3 metadata into MP3
                     insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
@@ -274,12 +303,15 @@ def main():
                         processDict['crop'] = 2
 
                     # FFmpeg and QCTools the file
-                    if processDict['derivDetails'] == "NoDerivs":
+                    if processDict['numDerivs'] == 0:
                         print(bcolors.OKBLUE + "User Select Zero Derivatives, Skipping Transcode of " + filename + "\n\n" + bcolors.ENDC)
                         if processDict['createQCT'] == 1:
-                            runCommand("qcli -i '" + tempFilePath + "'")
+                            if "dv" in media_info_list[fileNum]["essenceTrackEncodingVideo__c"] or "DV" in media_info_list[fileNum]["essenceTrackEncodingVideo__c"]:
+                                runCommand("dvrescue '" + tempFilePath + "' -x '" + tempFilePath + ".dvrescue.xml' -c '" + tempFilePath + ".dvrescue.scc' -s '" + tempFilePath + ".dvrescue.vtt'")
+                            else:
+                                runCommand("qcli -i '" + tempFilePath + "'")
                     else:
-                        processVideo(tempFilePath, processDict)
+                        processVideo(tempFilePath, processDict, media_info_list[fileNum]["essenceTrackEncodingVideo__c"])
 
                     # Add to the list of paths to be rsynced
                     inPathList.append(tempFilePath)
@@ -412,6 +444,10 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
             elif file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
                 file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 4444"
             elif file_dict["essenceTrackEncodingVideo__c"] == "dv":
+                file_dict["essenceTrackEncodingVideo__c"] = "DV"
+            elif file_dict["essenceTrackEncodingVideo__c"] == "dvc ":
+                file_dict["essenceTrackEncodingVideo__c"] = "DV"
+            elif file_dict["essenceTrackEncodingVideo__c"] == "dvc":
                 file_dict["essenceTrackEncodingVideo__c"] = "DV"
             elif file_dict["essenceTrackEncodingVideo__c"] == "DV":
                 file_dict["essenceTrackEncodingVideo__c"] = "DV"
@@ -578,12 +614,12 @@ def hashfile(filePath, hashalg, blocksize=65536):
 
 
 # Runs the scripting. FFmpeg, QCLI
-def processVideo(inPath, processDict):
-    processVideoCMD = createString(inPath, processDict)
+def processVideo(inPath, processDict, videoCodec):
+    processVideoCMD = createString(inPath, processDict, processVideo, videoCodec)
     runCommand(processVideoCMD)
 
 # Creates the string based off the inputs
-def createString(inPath, processDict):
+def createString(inPath, processDict, processVideo, videoCodec):
 
     ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -vsync 0 -i '" + inPath + "' "
 
@@ -660,7 +696,10 @@ def createString(inPath, processDict):
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
 
     if processDict['createQCT'] == 1:
-        qctString = " && qcli -i '" + inPath + "'"
+        if videoCodec == "DV":
+            qctString = " && dvrescue '" + inPath + "' -x '" + inPath + ".dvrescue.xml' -c '" + inPath + ".dvrescue.scc' -s '" + inPath + ".dvrescue.vtt'"
+        else:
+            qctString = " && qcli -i '" + inPath + "'"
     else:
         qctString = ""
 
@@ -984,7 +1023,9 @@ def createProcessDict(processDict):
 
     # What to do if user selects 0 derivatives (so they just get mediainfo, qctools, presraid)
     if processDict['numDerivs'] == 0:
-        processDict['derivDetails'] = "NoDerivs"
+        derivDetails = {}
+        #initialize variable
+        derivDetails['mp3Kbps'] = 0
 
     for derivCount in range (1, (processDict.get('numDerivs') + 1)):
         derivDetails = {}
@@ -1055,7 +1096,7 @@ def createProcessDict(processDict):
     if derivDetails['mp3Kbps'] != 0:
         processDict['createQCT'] = 2
     else:
-        userChoiceQC = input(bcolors.OKBLUE + "\nDo you want to create a QCTools Report for this file?\n[1] Yes \n[2] No\n\n" + bcolors.ENDC)
+        userChoiceQC = input(bcolors.OKBLUE + "\nDo you want to create a QCTools Report / DVRescue Report for this file?\n[1] Yes \n[2] No\n\n" + bcolors.ENDC)
         while userChoiceQC not in ("1","2"):
             print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
             userChoiceQC = input(bcolors.OKBLUE + "\n[1] Yes \n[2] No\n\n" + bcolors.ENDC)
