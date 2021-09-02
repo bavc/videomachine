@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.3.2
+#Current Version: 1.3.3
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -78,6 +78,9 @@
 #   1.3.2 - 20210825
 #       -Script now uses dvrescue automatically on dv in .mov files that it gets, no longer running QCTools on these files
 #       -Fixed bugs causing script not to work on a single file
+#   1.3.3 - 20210901
+#       -Fixed bug that caused audio not to work
+#       -Fixed bugs that required full path after one wrong answer for pres raid path
 #
 #   STILL NEEDS
 #       Logging
@@ -266,7 +269,7 @@ def main():
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
 
                     #Transcode the file
-                    processVideo(tempFilePath, processDict, videoCodec)
+                    processVideo(tempFilePath, processDict, "WAV")
 
                     #Insert ID3 metadata into MP3
                     insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
@@ -1089,6 +1092,8 @@ def createProcessDict(processDict):
         while not os.path.isdir("/Volumes/presraid/" + processDict['presRaidFolderPath']):
             print(bcolors.FAIL + "\nFolder path does not exist! Please try again!" + bcolors.ENDC)
             processDict['presRaidFolderPath'] = str(input(bcolors.OKGREEN + "\nPlease Enter the Folder in the PresRAID you want to move these files to\n\n" + bcolors.ENDC))
+            if os.path.isdir("/Volumes/presraid/InProgress/" + processDict['presRaidFolderPath']):   #add a little catch to automatically add "InProgress" if the folder in there exists already
+                processDict['presRaidFolderPath'] = "InProgress/" + processDict['presRaidFolderPath']
     else:
         processDict['presRaidFolderPath'] = ""
 
