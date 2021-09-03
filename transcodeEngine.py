@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.3.3
+#Current Version: 1.3.4
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -81,6 +81,8 @@
 #   1.3.3 - 20210901
 #       -Fixed bug that caused audio not to work
 #       -Fixed bugs that required full path after one wrong answer for pres raid path
+#   1.3.4 - 20210903
+#       -removed vsync 0 flag which was cuasing bugs on latest versions of ffmpeg
 #
 #   STILL NEEDS
 #       Logging
@@ -624,7 +626,8 @@ def processVideo(inPath, processDict, videoCodec):
 # Creates the string based off the inputs
 def createString(inPath, processDict, processVideo, videoCodec):
 
-    ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -vsync 0 -i '" + inPath + "' "
+#    ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -vsync 0 -i '" + inPath + "' "
+    ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + inPath + "' "
 
     for derivCount in range(len(processDict['derivDetails'])):
 
