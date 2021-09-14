@@ -30,8 +30,22 @@ volumeBoost="${maxVolume:1}"
 audioCodec=$(ffprobe "${1}" 2>&1 >/dev/null |grep Stream.*Audio | sed -e 's/.*Audio: //' -e 's/[, ].*//')
 
 if [[ $format = "Video" ]] ; then #if the variable $format is "Video", then run ffmpeg command with -c:v copy, otherwise omit it
+	logNewLine "Processing as Video"
 	logLog ffmpeg -hide_banner -loglevel error -i "${1}" -af "volume="${volumeBoost}"dB" -c:v copy -c:a ${audioCodec} -ar ${audioSampleRate} -y "${1%.*}_normalized.${extension}"
 else
-	logLog ffmpeg -hide_banner -loglevel error -i "${1}" -af "volume="${volumeBoost}"dB" -c:a ${audioCodec} -ar ${audioSampleRate} -y "${1%.*}_normalized.${extension}"
+	logNewLine "Processing as Audio, collecting metadata"
+	audioBitRate=$(mediainfo "${1}" --Inform="General;%OverallBitRate%" )
+	logNewLine "Bitrate is $audioBitRate"
+	metadataAlbum=$(mediainfo "${1}" --Inform="General;%Album%" )
+	logNewLine "The album name is $metadataAlbum"
+	metadataTrack=$(mediainfo "${1}" --Inform="General;%Track%" )
+	logNewLine "The album name is $metadataTrack"
+	metadataArtist=$(mediainfo "${1}" --Inform="General;%Performer%" )
+	logNewLine "The album name is $metadataArtist"
+	metadataDate=$(mediainfo "${1}" --Inform="General;%Recorded_Date%" )
+	logNewLine "The album name is $metadataDate"
+	logLog ffmpeg -hide_banner -loglevel error -i "${1}" -af "volume="${volumeBoost}"dB" -c:a ${audioCodec} -ar ${audioSampleRate} -b ${audioBitRate} -y -write_xing 0 "${1%.*}_normalized.${extension}"
+	logNewLine "File created. Now inserting metadata"
+	logLog id3v2 -a "${metadataArtist}" -A  "${metadataAlbum}" -t "${metadataTrack}" -y "${metadataDate}" "${1%.*}_normalized.${extension}"
 fi
 logNewLine "Script Complete!\n\n"
