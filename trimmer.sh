@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# version 2.0
+# version 3.0
 
 # Trims files using ffmpeg while maintaining proper color info. Works with arbitrary file types (tested with v210, FFV1, and ProRes)
 
@@ -11,6 +11,9 @@
 #   - probes for color info using mediainfo and puts that back in properly
 #   - can handle delayed start using "Sleep" command
 #   - handles extension properly so can be used with arbitrary file types
+# 2.0
+#   Added features
+#   - allows millisecond accurate trims
 
 # Arguments:
 # $1: Input File 1
@@ -33,8 +36,9 @@ $(basename "${0}")
 
   Input Arguments
    MOVIE_FILE.mov: Input file. This works on any video file.
-   START_TIMESTAMP: Start timestamp in format HH:MM:SS. Use 00:00:00 for no head trim
-   END_TIMESTAMP: End timestamp in format HH:MM:SS. Use 00:00:00 for no tail trim
+   START_TIMESTAMP: Start timestamp in format HH:MM:SS or HH:MM:SS.mmm || Use 00:00:00 for no head trim
+   END_TIMESTAMP: End timestamp in format HH:MM:SS or HH:MM:SS.mmm || Use 00:00:00 for no tail trim
+   DELAY: How long to delay the start of the script in seconds (optional)
 
   Dependencies: FFmpeg
 EOF
@@ -58,17 +62,21 @@ else
     exit
 fi
 
-if [[ ${2} =~ [0-9][0-9]:[0-5][0-9]:[0-5][0-9] ]] ; then
+if [[ ${2} =~ [0-9][0-9]:[0-5][0-9]:[0-5][0-9]\.[0-9][0-9][0-9]$ ]] ; then
+    printf "Start Time Stamp: ${2} \n" >&2
+elif [[ ${2} =~ [0-9][0-9]:[0-5][0-9]:[0-5][0-9]$ ]] ; then
     printf "Start Time Stamp: ${2} \n" >&2
 else
-    printf "ERROR: Second argument must be a valid Timestamp (HH:MM:SS) \n" >&2
+    printf "ERROR: Second argument must be a valid Timestamp (HH:MM:SS or HH:MM:SS.mmm) \n" >&2
     exit
 fi
 
-if [[ ${3} =~ [0-9][0-9]:[0-5][0-9]:[0-5][0-9] ]] ; then
+if [[ ${3} =~ [0-9][0-9]:[0-5][0-9]:[0-5][0-9]\.[0-9][0-9][0-9]$ ]] ; then
+    printf "Start Time Stamp: ${3} \n" >&2
+elif [[ ${3} =~ [0-9][0-9]:[0-5][0-9]:[0-5][0-9]$ ]] ; then
     printf "End Time Stamp: ${3} \n" >&2
 else
-    printf "ERROR: Third argument must be a valid Timestamp (HH:MM:SS) \n" >&2
+    printf "ERROR: Third argument must be a valid Timestamp (HH:MM:SS or HH:MM:SS.mmm) \n" >&2
     exit
 fi
 
