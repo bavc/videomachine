@@ -11,7 +11,7 @@
 #   - probes for color info using mediainfo and puts that back in properly
 #   - can handle delayed start using "Sleep" command
 #   - handles extension properly so can be used with arbitrary file types
-# 2.0
+# 3.0
 #   Added features
 #   - allows millisecond accurate trims
 
