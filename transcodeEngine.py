@@ -417,11 +417,11 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 print(sys.exc_info())
 
             #This is where we insert the BWAV metadata. tag value pairs are added the medainfo dict (so we don't need to add more dicts) then rmeoved later on in the script
-            try:
-                insertBWAV(file_dict, filePath)
-            except Exception as e:
-                print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
-                print(sys.exc_info())
+            #try:
+            insertBWAV(file_dict, filePath)
+            #except Exception as e:
+            #    print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+            #    print(sys.exc_info())
     except:
         print(bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
     try:
@@ -696,7 +696,7 @@ def createString(inPath, processDict, processVideo, videoCodec):
             videoFilterString = videoFilterString.replace("-vf ", "-vf setfield=bff,setdar=4/3,")
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],".mkv")
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
-            baseString = " -c:a libmp3lame -b:a " + mp3kpbs + " -write_xing 0 -ac 2 "
+            baseString = " -c:a libmp3lame -b:a " + mp3kpbs + "k -write_xing 0 -ac 2 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
 
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
@@ -778,7 +778,11 @@ def getAudioMetadata(file_dict, filePath, barcode):
 
     #Get metadata to embed from salesforce
     audioMetaDict = {}
-    audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
+    try:
+        audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
+    except:
+        print(bcolors.WARNING + "\nSalesforce Connection Failed. Will get metadata manually" + bcolors.ENDC)
+        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
     filename = os.path.basename(filePath)
     if audioMetaDict['title'] == None:
         audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ", if any (No apostrophes or quotes please!): " + bcolors.ENDC)
@@ -796,7 +800,7 @@ def getAudioMetadata(file_dict, filePath, barcode):
         while userChoiceNum not in ("1","2","3","4","5","6","7","8","9","10"):
             print(bcolors.FAIL + "\nIncorrect Input! Please enter a number\n" + bcolors.ENDC)
             userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used: \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n[10] 103628-Sony-TCD-D7\n\n " + bcolors.ENDC)
-        audioMetaDict['signalChain'] = int(userChoiceNum)
+        audioMetaDict['signalChain'] = str(userChoiceNum)
 
     file_dict['audioMetaDict'] = audioMetaDict
     return file_dict
@@ -855,29 +859,29 @@ def insertBWAV(file_dict, filePath):
         ICRD = file_dict['audioMetaDict']['createdDate']
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
-    if file_dict['audioMetaDict']['signalChain'] == 1 or "a0N50000000vdsYEAQ" in file_dict['audioMetaDict']['signalChain']:
+    if file_dict['audioMetaDict']['signalChain'] == '1' or "a0N50000000vdsYEAQ" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 2 or "a0N50000000vdsd" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '2' or "a0N50000000vdsd" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-55_10482068n\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 3 or "a0N5000001c7tg0" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '3' or "a0N5000001c7tg0" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_34_220069\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 4 or "a0N50000001mMc3" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '4' or "a0N50000001mMc3" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122MKII_1502630881\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 5 or "a0N2J00001zQwkV" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '5' or "a0N2J00001zQwkV" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Panasonic_SV-3700_AA5IJ26175\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 6 or "a0N2J00003ZNJCI" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '6' or "a0N2J00003ZNJCI" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-302494\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 7 or "a0N2J00003ZNJCD" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '7' or "a0N2J00003ZNJCD" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_MDS-E10-305292\\nA=S/PDIF,F=44100,W=16,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 8 or "a0N50000005yOY6EAM" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '8' or "a0N50000005yOY6EAM" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=TASCAM_DA-20-50088954\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 9 or "a0N50000000wCiIEAU" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '9' or "a0N50000000wCiIEAU" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Tascam_122mkiii-8x00094984\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
-    elif file_dict['audioMetaDict']['signalChain'] == 10 or "a0N2J00003b0r7U" in file_dict['audioMetaDict']['signalChain']:
+    elif file_dict['audioMetaDict']['signalChain'] == '10' or "a0N2J00003b0r7U" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_TCD-D7\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
-
+    print(bwavCodingHistory)
 #   Pads blank space at end of coding history if the length is odd to make sure there is an even number of characters.
     codeHistLen = len(bwavCodingHistory)
     if codeHistLen % 2 != 0:
