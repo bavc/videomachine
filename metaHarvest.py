@@ -47,7 +47,7 @@ def main():
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional)")
     parser.add_argument('-pr','--ProRes',dest='pr',action ='store_true',default=False, help="Allows parsing of ProRes files when turned on")
     parser.add_argument('-mkv','--Matroska',dest='mkv',action ='store_true',default=False, help="Looks only for Matroska files")
-    parser.add_argument('-m2t','--MPEGTS',dest='mkv',action ='store_true',default=False, help="Looks only for .mt2 files, which are HDV files")
+    parser.add_argument('-m2t','--MPEGTS',dest='mt2',action ='store_true',default=False, help="Looks only for .mt2 files, which are HDV files")
     args = parser.parse_args()
 
     #handling the input args. This is kind of a mess in this version
