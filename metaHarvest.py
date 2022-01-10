@@ -62,7 +62,7 @@ def main():
     if args.mkv is True:
         masterExtension = ".mkv"
     if args.m2t is True:
-        masterExtension = ".mkv"
+        masterExtension = ".m2t"
     else:
         masterExtension = ".mov"
 
