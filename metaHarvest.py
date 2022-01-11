@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.9.1
+#Current Version: 0.9.2
 #Version History
 #   0.1 - 20170707
 #       Creates a CSV file with all of the correct field names to match up with the SalesForce table. No bells or whistles. Input args suck
@@ -27,6 +27,8 @@
 #       Fixed support fort for DV harvesting
 #   0.9.1 - 20200415
 #       Fixed a big that allowed Disney ProRes files to be processed without PR flag
+#   0.9.2 - 20220110
+#       Added support for MPEG-TS m2t files from HDV capture
 
 # import modules used here -- sys is a very standard one
 import os, sys
