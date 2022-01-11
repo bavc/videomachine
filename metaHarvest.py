@@ -196,6 +196,8 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
             file_dict["instantiationDigital__c"] = "DV"
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
+        elif fileFormatTemp == "MPEG-TS":
+            file_dict["instantiationDigital__c"] = "MPEG-TS"
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
@@ -219,13 +221,13 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422 Proxy"
         elif file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 4444"
-        elif file_dict["essenceTrackEncodingVideo__c"] == "2":
-            file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Commercial_name>"))[1].split("</Commercial_name>")[0]
         elif "FFV1" in file_dict["essenceTrackEncodingVideo__c"]:
             file_dict["essenceTrackEncodingVideo__c"] = "FFV1"
         elif "ProRes" in file_dict["essenceTrackEncodingVideo__c"] and proresFlag == False:
             print bcolors.FAIL + "Skipping ProRes File! (run with flag -pr to parse ProRes)" + bcolors.ENDC
             return "prores"
+        else:
+            file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Commercial_name>"))[1].split("</Commercial_name>")[0]
     except:
         try:
             file_dict["essenceTrackEncodingVideo__c"] = "DV"
