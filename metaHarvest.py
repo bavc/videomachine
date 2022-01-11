@@ -188,6 +188,7 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Duration for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         fileFormatTemp = (mi_General_Text.split("<Format>"))[1].split("</Format>")[0]
+        print(fileFormatTemp)
         if fileFormatTemp == "MPEG-4":
             file_dict["instantiationDigital__c"] = "MOV"
         elif fileFormatTemp == "Matroska":
