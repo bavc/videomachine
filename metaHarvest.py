@@ -219,6 +219,8 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 422 Proxy"
         elif file_dict["essenceTrackEncodingVideo__c"] == "ap4h":
             file_dict["essenceTrackEncodingVideo__c"] = "Apple ProRes 4444"
+        elif file_dict["essenceTrackEncodingVideo__c"] == "2":
+            file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Commercial_name>"))[1].split("</Commercial_name>")[0]
         elif "FFV1" in file_dict["essenceTrackEncodingVideo__c"]:
             file_dict["essenceTrackEncodingVideo__c"] = "FFV1"
         elif "ProRes" in file_dict["essenceTrackEncodingVideo__c"] and proresFlag == False:
