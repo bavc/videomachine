@@ -306,7 +306,10 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         try:
             file_dict["essenceTrackBitDepthAudio__c"] = (mi_Audio_Text.split("<Bit_depth>"))[1].split("</Bit_depth>")[0]
         except:
-            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+            if "HDV" in file_dict["essenceTrackEncodingVideo__c"]:
+                file_dict["essenceTrackBitDepthAudio__c"] = "N/A"
+            else:
+                print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         samplingRate = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
         if samplingRate == "44100":
