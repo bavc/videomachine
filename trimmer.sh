@@ -145,7 +145,7 @@ else
     exit
 fi
 
-ffmpeg -ss ${2} -to ${3} -i "${1}" ${mov_flags} ${color_primaries_flag} ${transfer_characteristics_flag} ${matrix_coefficients_flag} -metadata:s language=eng -c copy "${1%.*}_trimmed.${extension}"
+ffmpeg -ss ${2} -to ${3} -i "${1}" -map 0 ${mov_flags} ${color_primaries_flag} ${transfer_characteristics_flag} ${matrix_coefficients_flag} -metadata:s language=eng -c copy "${1%.*}_trimmed.${extension}"
 printf "\n\n*******START FFMPEG COMMANDS*******\n" >&2
-printf "ffmpeg -ss ${2} -to ${3} -i '${1}' ${mov_flags} ${color_primaries_flag} ${transfer_characteristics_flag} ${matrix_coefficients_flag} -metadata:s language=eng -c copy '${1%.*}_trimmed.${extension}' \n" >&2
+printf "ffmpeg -ss ${2} -to ${3} -i '${1}' -map 0 ${mov_flags} ${color_primaries_flag} ${transfer_characteristics_flag} ${matrix_coefficients_flag} -metadata:s language=eng -c copy '${1%.*}_trimmed.${extension}' \n" >&2
 printf "********END FFMPEG COMMANDS********\n\n " >&2
