@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.3.4
+#Current Version: 1.4.0
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -83,6 +83,9 @@
 #       -Fixed bugs that required full path after one wrong answer for pres raid path
 #   1.3.4 - 20210903
 #       -removed vsync 0 flag which was cuasing bugs on latest versions of ffmpeg
+#   1.4.0 - 20220114
+#       -finally added aspect ratio support. Uses media info metadata to pass aspect ratio to transcode string.
+#       -This has been tested and works with a mix of 4:3 and 16:9 contend for MP4, ProRes, and MKV derivatives
 #
 #   STILL NEEDS
 #       Logging
