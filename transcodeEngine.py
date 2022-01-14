@@ -629,18 +629,12 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
 #    ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -vsync 0 -i '" + inPath + "' "
     ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + inPath + "' "
 
-    print(aspectRatio)
-
     if aspectRatio == "":           #in case we're unable to get the aspect ratio for some reason or another
         aspectRatioColon = "4:3"
         aspectRatioSlash = "4/3"
     else:
         aspectRatioColon = aspectRatio
         aspectRatioSlash = aspectRatio.replace(":", "/")
-
-    print(aspectRatioColon)
-    print(aspectRatioSlash)
-    quit()
 
     for derivCount in range(len(processDict['derivDetails'])):
 
@@ -695,18 +689,18 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
             mp3kpbs = "0"
 
         if processDict['derivDetails'][derivCount]['derivType'] == 1: # Basestring for H264/MP4
-            baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -crf 18 -b:a 160000 -ar 48000 -aspect 4:3 -s " + frameSizeString + " "
-            videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=4/3,")
+            baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -crf 18 -b:a 160000 -ar 48000 -aspect " + aspectRatioColon + " -s " + frameSizeString + " "
+            videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=" + aspectRatioSlash + ",")
             if "720x540" in baseString:
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mp4")
             else:
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
-            baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -ar 48000 "
+            baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -aspect " + aspectRatioColon + " -ar 48000 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_mezzanine.mov")
         elif processDict['derivDetails'][derivCount]['derivType'] == 3: # Basestring for FFv1/MKV
             baseString = " -map 0 -dn -c:v ffv1 -level 3 -coder 1 -context 1 -g 1 -slicecrc 1 -slices 24 -field_order bb -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c:a copy "
-            videoFilterString = videoFilterString.replace("-vf ", "-vf setfield=bff,setdar=4/3,")
+            videoFilterString = videoFilterString.replace("-vf ", "-vf setfield=bff,setdar=" + aspectRatioSlash + ",")
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],".mkv")
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
             baseString = " -c:a libmp3lame -b:a " + mp3kpbs + "k -write_xing 0 -ac 2 "
