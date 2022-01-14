@@ -693,7 +693,12 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
 
         if processDict['derivDetails'][derivCount]['derivType'] == 1: # Basestring for H264/MP4
             baseString = " -c:v libx264 -pix_fmt yuv420p -movflags faststart -crf 18 -b:a 160000 -ar 48000 -aspect " + aspectRatioColon + " -s " + frameSizeString + " "
-            videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=" + aspectRatioSlash + ",")
+            if videoFilterString == " ":
+                videoFilterString = "-vf setdar=" + aspectRatioSlash
+            elif videoFilterString == "":
+                videoFilterString = "-vf setdar=" + aspectRatioSlash
+            else:
+                videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=" + aspectRatioSlash + ",")
             if "720x540" in baseString:
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mp4")
             else:
