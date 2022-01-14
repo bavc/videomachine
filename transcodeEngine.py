@@ -700,11 +700,11 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
             baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -aspect " + aspectRatioColon + " -ar 48000 "
+            videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=" + aspectRatioSlash + ",")
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_mezzanine.mov")
         elif processDict['derivDetails'][derivCount]['derivType'] == 3: # Basestring for FFv1/MKV
             baseString = " -map 0 -dn -c:v ffv1 -level 3 -coder 1 -context 1 -g 1 -slicecrc 1 -slices 24 -field_order bb -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c:a copy "
-            videoFilterString = videoFilterString.replace("-vf ", "-vf setfield=bff,setdar=" + aspectRatioSlash + ",")
-            print(videoFilterString)
+            videoFilterString = "-vf setfield=bff,setdar=" + aspectRatioSlash + ","
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],".mkv")
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
             baseString = " -c:a libmp3lame -b:a " + mp3kpbs + "k -write_xing 0 -ac 2 "
