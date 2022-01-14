@@ -179,7 +179,7 @@ def main():
             mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
 
             #Transcode the File
-            processVideo(inPath, processDict, "WAV")
+            processVideo(inPath, processDict, "WAV", "")
 
             #insert ID3 tags in MP3
             insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
@@ -212,7 +212,7 @@ def main():
                     else:
                         runCommand("qcli -i '" + inPath + "'")
             else:
-                processVideo(inPath, processDict, media_info_list[0]["essenceTrackEncodingVideo__c"])
+                processVideo(inPath, processDict, media_info_list[0]["essenceTrackEncodingVideo__c"], media_info_list[0]["essenceTrackAspectRatio__c"])
 
 
         # Make the mediainfo CSV
@@ -271,7 +271,7 @@ def main():
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
 
                     #Transcode the file
-                    processVideo(tempFilePath, processDict, "WAV")
+                    processVideo(tempFilePath, processDict, "WAV", "")
 
                     #Insert ID3 metadata into MP3
                     insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
@@ -316,7 +316,7 @@ def main():
                             else:
                                 runCommand("qcli -i '" + tempFilePath + "'")
                     else:
-                        processVideo(tempFilePath, processDict, media_info_list[fileNum]["essenceTrackEncodingVideo__c"])
+                        processVideo(tempFilePath, processDict, media_info_list[fileNum]["essenceTrackEncodingVideo__c"], media_info_list[fileNum]["essenceTrackAspectRatio__c"])
 
                     # Add to the list of paths to be rsynced
                     inPathList.append(tempFilePath)
@@ -619,15 +619,28 @@ def hashfile(filePath, hashalg, blocksize=65536):
 
 
 # Runs the scripting. FFmpeg, QCLI
-def processVideo(inPath, processDict, videoCodec):
-    processVideoCMD = createString(inPath, processDict, processVideo, videoCodec)
+def processVideo(inPath, processDict, videoCodec, aspectRatio):
+    processVideoCMD = createString(inPath, processDict, processVideo, videoCodec, aspectRatio)
     runCommand(processVideoCMD)
 
 # Creates the string based off the inputs
-def createString(inPath, processDict, processVideo, videoCodec):
+def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
 
 #    ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -vsync 0 -i '" + inPath + "' "
     ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + inPath + "' "
+
+    print(aspectRatio)
+
+    if aspectRatio == "":           #in case we're unable to get the aspect ratio for some reason or another
+        aspectRatioColon = "4:3"
+        aspectRatioSlash = "4/3"
+    else:
+        aspectRatioColon = aspectRatio
+        aspectRatioSlash = aspectRatio.replace(":", "/")
+
+    print(aspectRatioColon)
+    print(aspectRatioSlash)
+    quit()
 
     for derivCount in range(len(processDict['derivDetails'])):
 
