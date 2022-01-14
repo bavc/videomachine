@@ -700,6 +700,9 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
                 processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
             baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -aspect " + aspectRatioColon + " -ar 48000 "
+            print("****")
+            print(videoFilterString)
+            print("****")
             if videoFilterString == "":
                 videoFilterString = "-vf setdar=" + aspectRatioSlash
             else:
