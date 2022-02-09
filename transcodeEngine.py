@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.4.0
+#Current Version: 1.5.0
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -86,6 +86,9 @@
 #   1.4.0 - 20220114
 #       -finally added aspect ratio support. Uses media info metadata to pass aspect ratio to transcode string.
 #       -This has been tested and works with a mix of 4:3 and 16:9 contend for MP4, ProRes, and MKV derivatives
+#   1.5.0 - 20220209
+#       -Hoping that v 1.5 can work out any lingering audio issues
+#       -Added PNG generation support to catch glitches and noise errors
 #
 #   STILL NEEDS
 #       Logging
@@ -96,6 +99,7 @@
 #       QCLI
 #       bwfmetaedit
 #       id3v2
+#       sox
 ###REQUIRED LIBRARIES####
 ###simple_salesforce
 
@@ -420,11 +424,14 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 print(sys.exc_info())
 
             #This is where we insert the BWAV metadata. tag value pairs are added the medainfo dict (so we don't need to add more dicts) then rmeoved later on in the script
-            #try:
-            insertBWAV(file_dict, filePath)
-            #except Exception as e:
-            #    print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
-            #    print(sys.exc_info())
+            try:
+                insertBWAV(file_dict, filePath)
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
+
+            createSpectro(filePath)
+
     except:
         print(bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
     try:
@@ -825,6 +832,11 @@ def getAudioMetadata(file_dict, filePath, barcode):
 
     file_dict['audioMetaDict'] = audioMetaDict
     return file_dict
+
+# Create a PNG of a Spectogram using sox
+def createSpectro(filePath):
+    soxString = "sox '" + filePath + "' -n spectrogram -o '" + filePath + ".png'"
+    runCommand(bwfString)
 
 # Inserting BWAV metadata in master audio files
 def insertBWAV(file_dict, filePath):
