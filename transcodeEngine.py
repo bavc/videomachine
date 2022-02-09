@@ -424,12 +424,13 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 print(sys.exc_info())
 
             #This is where we insert the BWAV metadata. tag value pairs are added the medainfo dict (so we don't need to add more dicts) then rmeoved later on in the script
+            print('111111111')
             try:
                 insertBWAV(file_dict, filePath)
             except Exception as e:
                 print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
                 print(sys.exc_info())
-
+            print('222222222')
             try:
                 print('spectro****')
                 createSpectro(filePath)
@@ -842,8 +843,8 @@ def getAudioMetadata(file_dict, filePath, barcode):
 
 # Create a PNG of a Spectogram using sox
 def createSpectro(filePath):
-    soxString = "/usr/local/bin/sox '" + filePath + "' -n spectrogram -o '" + filePath + ".png'"
-    runCommand(bwfString)
+    soxString = "sox '" + filePath + "' -n spectrogram -o '" + filePath + ".png'"
+    runCommand(soxString)
 
 # Inserting BWAV metadata in master audio files
 def insertBWAV(file_dict, filePath):
