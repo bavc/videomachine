@@ -430,7 +430,14 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
                 print(sys.exc_info())
 
-            createSpectro(filePath)
+            try:
+                print('spectro****')
+                createSpectro(filePath)
+                print('spectro%%%%')
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not make spectrogram for file " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
+
 
     except:
         print(bcolors.FAIL + "MEDIAINFO ERROR: Could not File Format for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
@@ -835,7 +842,7 @@ def getAudioMetadata(file_dict, filePath, barcode):
 
 # Create a PNG of a Spectogram using sox
 def createSpectro(filePath):
-    soxString = "sox '" + filePath + "' -n spectrogram -o '" + filePath + ".png'"
+    soxString = "/usr/local/bin/sox '" + filePath + "' -n spectrogram -o '" + filePath + ".png'"
     runCommand(bwfString)
 
 # Inserting BWAV metadata in master audio files
