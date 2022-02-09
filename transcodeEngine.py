@@ -424,17 +424,14 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 print(sys.exc_info())
 
             #This is where we insert the BWAV metadata. tag value pairs are added the medainfo dict (so we don't need to add more dicts) then rmeoved later on in the script
-            print('111111111')
             try:
                 insertBWAV(file_dict, filePath)
             except Exception as e:
                 print(bcolors.FAIL + "METADATA ERROR: Could not properly embed bwav metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
                 print(sys.exc_info())
-            print('222222222')
+
             try:
-                print('spectro****')
                 createSpectro(filePath)
-                print('spectro%%%%')
             except Exception as e:
                 print(bcolors.FAIL + "METADATA ERROR: Could not make spectrogram for file " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
                 print(sys.exc_info())
@@ -924,7 +921,6 @@ def insertBWAV(file_dict, filePath):
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Sony_TCD-D7\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     else:
         bwavCodingHistory = "n/a"
-    print(bwavCodingHistory)
 #   Pads blank space at end of coding history if the length is odd to make sure there is an even number of characters.
     codeHistLen = len(bwavCodingHistory)
     if codeHistLen % 2 != 0:
