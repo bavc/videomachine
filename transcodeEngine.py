@@ -725,7 +725,7 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
                 videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=" + aspectRatioSlash + ",")
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_mezzanine.mov")
         elif processDict['derivDetails'][derivCount]['derivType'] == 3: # Basestring for FFv1/MKV
-            baseString = " -map 0 -dn -c:v ffv1 -level 3 -coder 1 -context 1 -g 1 -slicecrc 1 -slices 24 -field_order bb -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -c:a copy "
+            baseString = " -c:v ffv1 -level 3 -g 1 -slices 16 -slicecrc 1 -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -metadata:s:v:0 'encoder= FFV1 version 3' -c:a copy -vf setfield=bff,setsar=40/27,setdar=4/3 -metadata creation_time=now -f matroska "
             videoFilterString = "-vf setfield=bff,setdar=" + aspectRatioSlash
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],".mkv")
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
