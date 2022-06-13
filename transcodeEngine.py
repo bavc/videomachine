@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.5.0
+#Current Version: 1.5.1
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -89,6 +89,8 @@
 #   1.5.0 - 20220209
 #       -Hoping that v 1.5 can work out any lingering audio issues
 #       -Added PNG generation support to catch glitches and noise errors
+#   1.5.1 - 20220613
+#       - For now, just testing github on new laptop
 #
 #   STILL NEEDS
 #       Logging
