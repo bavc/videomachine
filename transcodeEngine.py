@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.5.1
+#Current Version: 1.6.0
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -91,6 +91,10 @@
 #       -Added PNG generation support to catch glitches and noise errors
 #   1.5.1 - 20220613
 #       - For now, just testing github on new laptop
+#   1.6.0 - 20220613
+#       - Added M4A support
+#       - Still need additional metadata field support from salesforce for CA-R metadata (mp4 metadata too)
+#
 #
 #   STILL NEEDS
 #       Logging
@@ -190,8 +194,11 @@ def main():
             #Transcode the File
             processVideo(inPath, processDict, "WAV", "")
 
-            #insert ID3 tags in MP3
-            insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
+            #Insert ID3 metadata into MP3. only do this for MP3, not for M4A
+            for derivCount in range (0, (processDict.get('numDerivs'))):
+                if processDict['derivDetails'][derivCount]['derivType'] == 5:
+                    insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
+
 
             #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
             del mediaInfoDict['audioMetaDict']
@@ -282,8 +289,10 @@ def main():
                     #Transcode the file
                     processVideo(tempFilePath, processDict, "WAV", "")
 
-                    #Insert ID3 metadata into MP3
-                    insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
+                    #Insert ID3 metadata into MP3. only do this for MP3, not for M4A
+                    for derivCount in range (0, (processDict.get('numDerivs'))):
+                        if processDict['derivDetails'][derivCount]['derivType'] == 5:
+                            insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
 
                     #remove audio metadata from CSV Metadata Dict
                     del mediaInfoDict['audioMetaDict']
@@ -656,7 +665,8 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
     for derivCount in range(len(processDict['derivDetails'])):
 
         #skip the following if deriv type is MP3
-        if processDict['derivDetails'][derivCount]['derivType'] != 5:
+        if processDict['derivDetails'][derivCount]['derivType'] <= 4:
+            exit()
         # See if user opted to not crop MP4s
 
             if processDict['derivDetails'][derivCount]['frameSize'] == 2:
@@ -695,13 +705,15 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
 
         # Figure out basestring
         if processDict['derivDetails'][derivCount]['mp3Kbps'] == 1:
-            mp3kpbs = "320"
+            mp3kpbs = "-b:a 320k"
         elif processDict['derivDetails'][derivCount]['mp3Kbps'] == 2:
-            mp3kpbs = "240"
+            mp3kpbs = "-b:a 240k"
         elif processDict['derivDetails'][derivCount]['mp3Kbps'] == 3:
-            mp3kpbs = "160"
+            mp3kpbs = "-b:a 160k"
         elif processDict['derivDetails'][derivCount]['mp3Kbps'] == 4:
-            mp3kpbs = "128"
+            mp3kpbs = "-b:a 128k"
+        elif processDict['derivDetails'][derivCount]['mp3Kbps'] == 5:
+            mp3kpbs = "-q:a 2"
         else:
             mp3kpbs = "0"
 
@@ -731,8 +743,11 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
             videoFilterString = "-vf setfield=bff,setdar=" + aspectRatioSlash
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],".mkv")
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
-            baseString = " -c:a libmp3lame -b:a " + mp3kpbs + "k -write_xing 0 -ac 2 "
+            baseString = " -c:a libmp3lame " + mp3kpbs + " -write_xing 0 -ac 2 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
+        elif processDict['derivDetails'][derivCount]['derivType'] == 6: # Basestring for MP3
+            baseString = " -c:a libfdk_aac " + mp3kpbs + " -ac 2 -r 48000 "
+            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.m4a")
 
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
 
@@ -1083,13 +1098,13 @@ def createProcessDict(processDict):
         #initialize variable
         derivDetails['mp3Kbps'] = 0
         #Get derivative types with error catching
-        userChoiceType = input(bcolors.OKBLUE + "\nWhich Codec Do You Want Derivatives " + str(derivCount) + " To Be?\n[1] H.264/MP4\n[2] ProRes/MOV\n[3] FFv1/MKV\n[4] J2K/MXF\n[5] MP3\n\n" + bcolors.ENDC)
-        while userChoiceType not in ("1","2","3","4", "5"):
+        userChoiceType = input(bcolors.OKBLUE + "\nWhich Codec Do You Want Derivatives " + str(derivCount) + " To Be?\n[1] H.264/MP4\n[2] ProRes/MOV\n[3] FFv1/MKV\n[4] J2K/MXF\n[5] MP3\n[6] M4A\n\n" + bcolors.ENDC)
+        while userChoiceType not in ("1","2","3","4","5","6"):
             print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
-            userChoiceType = input(bcolors.OKBLUE + "\n[1] H.264/MP4\n[2] ProRes/MOV\n[3] FFv1/MKV\n[4] J2K/MXF\n[5] MP3\n\n" + bcolors.ENDC)
+            userChoiceType = input(bcolors.OKBLUE + "\n[1] H.264/MP4\n[2] ProRes/MOV\n[3] FFv1/MKV\n[4] J2K/MXF\n[5] MP3\n[6] M4A\n\n" + bcolors.ENDC)
         derivDetails['derivType'] = int(userChoiceType)
         #Get derivative details with error catching
-        if derivDetails['derivType'] == 1 or derivDetails['derivType'] == 2 or derivDetails['derivType'] == 5:
+        if derivDetails['derivType'] == 1 or derivDetails['derivType'] == 2 or derivDetails['derivType'] == 5 or derivDetails['derivType'] == 6:
             #Interlacing Options
             if derivDetails['derivType'] == 1 or derivDetails['derivType'] == 2:
                 userChoiceInterlace = input(bcolors.OKGREEN + "\nDo you want to De-Interlace Derivative " + str(derivCount) + "?\n[1] De-interlace\n[2] Leave Interlaced\n\n" + bcolors.ENDC)
@@ -1104,6 +1119,14 @@ def createProcessDict(processDict):
                 while userChoiceKbps not in ("1","2","3","4"):
                     print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
                     userChoiceKbps = input(bcolors.OKGREEN + "\n[1] 320\n[2] 240\n[3] 160\n[4] 128\n\n" + bcolors.ENDC)
+                    derivDetails['mp3Kbps'] = int(userChoiceKbps)
+            # M4A Bitrate
+            elif derivDetails['derivType'] == 6:
+                userChoiceKbps= input(bcolors.OKGREEN + "\nHow many kpbs would you like to make your M4A " + str(derivCount) + "?\n[1] 320\n[2] 240\n[3] 160\n[4] 128\n[5] VBR\n\n" + bcolors.ENDC)
+                derivDetails['mp3Kbps'] = int(userChoiceKbps)
+                while userChoiceKbps not in ("1","2","3","4","5"):
+                    print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
+                    userChoiceKbps = input(bcolors.OKGREEN + "\n[1] 320\n[2] 240\n[3] 160\n[4] 128\n[5] VBR\n\n" + bcolors.ENDC)
                     derivDetails['mp3Kbps'] = int(userChoiceKbps)
             #Audio Mapping Options
             userChoiceAudio = input(bcolors.OKGREEN + "\nHow would you like to map the audio for Derivative " + str(derivCount) + "?\n[1] Keep Original\n[2] Pan Left Center\n[3] Pan Right Center\n[4] Sum Stereo To Mono\n\n" + bcolors.ENDC)
