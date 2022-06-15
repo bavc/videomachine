@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.0
+#Current Version: 1.6.1
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -94,6 +94,10 @@
 #   1.6.0 - 20220613
 #       - Added M4A support
 #       - Still need additional metadata field support from salesforce for CA-R metadata (mp4 metadata too)
+#   1.6.1 - 20220613
+#       - Added MP4 and M4A metadata embedding
+#       - Still need to figure out where to put "institution" field from CA-R spec
+#       - removed line that handles renaming file to NYU spec if 720x540 frame size is selected for MP4
 #
 #
 #   STILL NEEDS
@@ -197,7 +201,9 @@ def main():
             #Insert ID3 metadata into MP3. only do this for MP3, not for M4A
             for derivCount in range (0, (processDict.get('numDerivs'))):
                 if processDict['derivDetails'][derivCount]['derivType'] == 5:
-                    insertID3(mediaInfoDict, inPath.replace(".wav","_access.mp3"))
+                    insertID3(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.mp3"))
+                if processDict['derivDetails'][derivCount]['derivType'] == 6:
+                    insertMetaM4A(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.m4a"))
 
 
             #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
@@ -208,8 +214,9 @@ def main():
             #Harvest mediainfo metadata
             mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
 
-            #remove audio metadata from CSV Metadata Dict
-            del mediaInfoDict['audioMetaDict']
+            #create video metadata dict from the mediainfo dict
+            videoMetaDict = mediaInfoDict['audioMetaDict']
+            del mediaInfoDict['audioMetaDict']        #idk why i was deleting this before but i'm still doing it now for good measure
             media_info_list.append(mediaInfoDict) # Turns the dicts into lists
 
             # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
@@ -229,6 +236,11 @@ def main():
                         runCommand("qcli -i '" + inPath + "'")
             else:
                 processVideo(inPath, processDict, media_info_list[0]["essenceTrackEncodingVideo__c"], media_info_list[0]["essenceTrackAspectRatio__c"])
+
+            #Insert MP4 Metadata
+            for derivCount in range (0, (processDict.get('numDerivs'))):
+                if processDict['derivDetails'][derivCount]['derivType'] == 1:
+                    insertMetaM4A(videoMetaDict, inPath.replace(".mov","_access.mp4"))
 
 
         # Make the mediainfo CSV
@@ -292,7 +304,9 @@ def main():
                     #Insert ID3 metadata into MP3. only do this for MP3, not for M4A
                     for derivCount in range (0, (processDict.get('numDerivs'))):
                         if processDict['derivDetails'][derivCount]['derivType'] == 5:
-                            insertID3(mediaInfoDict, tempFilePath.replace(".wav","_access.mp3"))
+                            insertID3(mediaInfoDict['audioMetaDict'], tempFilePath.replace(".wav","_access.mp3"))
+                        if processDict['derivDetails'][derivCount]['derivType'] == 6:
+                            insertMetaM4A(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.m4a"))
 
                     #remove audio metadata from CSV Metadata Dict
                     del mediaInfoDict['audioMetaDict']
@@ -314,8 +328,9 @@ def main():
                     #Harvest mediainfo metadata
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
 
-                    #remove audio metadata from CSV Metadata Dict
-                    del mediaInfoDict['audioMetaDict']
+                    #create video metadata dict from the mediainfo dict
+                    videoMetaDict = mediaInfoDict['audioMetaDict']
+                    del mediaInfoDict['audioMetaDict']        #idk why i was deleting this before but i'm still doing it now for good measure
                     media_info_list.append(mediaInfoDict) # Turns the dicts into lists
 
                     # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
@@ -335,6 +350,9 @@ def main():
                                 runCommand("qcli -i '" + tempFilePath + "'")
                     else:
                         processVideo(tempFilePath, processDict, media_info_list[fileNum]["essenceTrackEncodingVideo__c"], media_info_list[fileNum]["essenceTrackAspectRatio__c"])
+                        for derivCount in range (0, (processDict.get('numDerivs'))):
+                            if processDict['derivDetails'][derivCount]['derivType'] == 1:
+                                insertMetaM4A(videoMetaDict, tempFilePath.replace(".mov","_access.mp4"))
 
                     # Add to the list of paths to be rsynced
                     inPathList.append(tempFilePath)
@@ -422,10 +440,25 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
         fileFormatTemp = (mi_General_Text.split("<Format>"))[1].split("</Format>")[0]
         if fileFormatTemp == "MPEG-4":
             file_dict["instantiationDigital__c"] = "MOV"
+            try:
+                file_dict = getVideoMetadata(file_dict, filePath, file_dict["Name"])
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not properly parse video metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
         elif fileFormatTemp == "Matroska":
             file_dict["instantiationDigital__c"] = "MKV"
+            try:
+                file_dict = getVideoMetadata(file_dict, filePath, file_dict["Name"])
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not properly parse video metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
         elif fileFormatTemp == "DV":
             file_dict["instantiationDigital__c"] = "DV"
+            try:
+                file_dict = getVideoMetadata(file_dict, filePath, file_dict["Name"])
+            except Exception as e:
+                print(bcolors.FAIL + "METADATA ERROR: Could not properly parse video metadata for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+                print(sys.exc_info())
         elif fileFormatTemp == "Wave":
             file_dict["instantiationDigital__c"] = "WAV"
             try:
@@ -666,7 +699,7 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
 
         #skip the following if deriv type is MP3
         if processDict['derivDetails'][derivCount]['derivType'] <= 4:
-            exit()
+
         # See if user opted to not crop MP4s
 
             if processDict['derivDetails'][derivCount]['frameSize'] == 2:
@@ -725,10 +758,10 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
                 videoFilterString = "-vf setdar=" + aspectRatioSlash
             else:
                 videoFilterString = videoFilterString.replace("-vf ", "-vf setdar=" + aspectRatioSlash + ",")
-            if "720x540" in baseString:
-                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mp4")
-            else:
-                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
+            #if "720x540" in baseString:        #this was part of the NYU job, not necessary anymore
+            #    processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mp4")
+            #else:
+            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
             baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -aspect " + aspectRatioColon + " -ar 48000 "
             if videoFilterString == " ":
@@ -746,7 +779,7 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
             baseString = " -c:a libmp3lame " + mp3kpbs + " -write_xing 0 -ac 2 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
         elif processDict['derivDetails'][derivCount]['derivType'] == 6: # Basestring for MP3
-            baseString = " -c:a libfdk_aac " + mp3kpbs + " -ac 2 -r 48000 "
+            baseString = " -c:a aac " + mp3kpbs + " -ac 2 -r 48000 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.m4a")
 
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
@@ -855,6 +888,32 @@ def getAudioMetadata(file_dict, filePath, barcode):
     file_dict['audioMetaDict'] = audioMetaDict
     return file_dict
 
+def getVideoMetadata(file_dict, filePath, barcode):
+    #Get metadata to embed from salesforce
+    audioMetaDict = {}
+    try:
+        audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
+    except:
+        print(bcolors.WARNING + "\nSalesforce Connection Failed. Will get metadata manually" + bcolors.ENDC)
+        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
+    filename = os.path.basename(filePath)
+    if audioMetaDict['title'] == None:
+        audioMetaDict['title'] = ""
+    if audioMetaDict['createdDate'] == None:
+        audioMetaDict['createdDate'] = ""
+    if audioMetaDict['digiDate'] == None:
+        audioMetaDict['digiDate'] = ""
+    if audioMetaDict['artistName'] == None:
+        audioMetaDict['artistName'] = ""
+    if audioMetaDict['albumName'] == None:
+        audioMetaDict['albumName'] = ""
+    audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
+    if audioMetaDict['signalChain'] == None:
+        audioMetaDict['signalChain'] = ""
+
+    file_dict['audioMetaDict'] = audioMetaDict
+    return file_dict
+
 # Create a PNG of a Spectogram using sox
 def createSpectro(filePath):
     soxString = "sox '" + filePath + "' -n spectrogram -o '" + filePath + ".png'"
@@ -914,6 +973,11 @@ def insertBWAV(file_dict, filePath):
         ICRD = file_dict['audioMetaDict']['createdDate']
     bwavUMID = "0000000000000000000000000000000000000000000000000000000000000000"
 
+    INAM = file_dict['audioMetaDict']['title']
+    ISRC = file_dict['audioMetaDict']['institution']
+    ICMT = file_dict['audioMetaDict']['comment']
+    ICOP = file_dict['audioMetaDict']['copyright']
+
     if file_dict['audioMetaDict']['signalChain'] == '1' or "a0N50000000vdsYEAQ" in file_dict['audioMetaDict']['signalChain']:
         bwavCodingHistory = "A=ANALOGUE,M=stereo,T=Otari_MX-5050_10452043f\\nA=PCM,F=96000,W=24,M=stereo,T=MOTU_Ultralite-MK3_ES1F2FFFE00CAB1"
     elif file_dict['audioMetaDict']['signalChain'] == '2' or "a0N50000000vdsd" in file_dict['audioMetaDict']['signalChain']:
@@ -943,19 +1007,38 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
     runCommand(bwfString)
 
 # Inserting ID3 metadata in master audio files
-def insertID3(file_dict, filePath):
+def insertID3(audioMetaDict, filePath):
 
-    id3Artist = file_dict['audioMetaDict']['artistName']
-    id3Album = file_dict['audioMetaDict']['albumName']
-    id3Title = file_dict['audioMetaDict']['title']
-    id3Year = file_dict['audioMetaDict']['yearDate']
+    id3Artist = audioMetaDict['artistName']
+    id3Album = audioMetaDict['albumName']
+    id3Title = audioMetaDict['title']
+    id3Year = audioMetaDict['yearDate']
 
     id3String = "id3v2 -a '" + id3Artist + "' -A '" + id3Album + "' -t '" + id3Title + "' -y '" + id3Year + "' '" + filePath + "'"
     runCommand(id3String)
+
+def insertMetaM4A(audioMetaDict, filePath):
+
+    tempFilePath = os.path.splitext(filePath)[0] + "_temp" + os.path.splitext(filePath)[1]
+    M4A_Title = audioMetaDict['title']
+    M4A_Comment = audioMetaDict['comment']
+    M4A_Copyright = audioMetaDict['copyright']
+    M4A_Copyright = M4A_Copyright + " - " + audioMetaDict['institution']
+
+    if "mp4" in filePath:
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart -metadata title='" + M4A_Title + "' -metadata comment='" + M4A_Comment + "' -metadata copyright='" + M4A_Copyright + "' '"+ tempFilePath + "'"
+    else:
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -metadata title='" + M4A_Title + "' -metadata comment='" + M4A_Comment + "' -metadata copyright='" + M4A_Copyright + "' '"+ tempFilePath + "'"
+    runCommand(ffmpeg_string)
+
+    move_string = "mv '" + tempFilePath + "' '" + filePath + "'"
+    runCommand(move_string)
+    #os.rename(tempFilePath, filePath)
+
 
 # Used for seeing if a string represents an integer
 def RepresentsInt(s):
@@ -1022,13 +1105,17 @@ def getSFAudioMD(Barcode, audioMetaDict):
     sfData = querySF(sf,Barcode)
     recordID = sfData['records'][0]['Id']
     sfRecord = sf.Preservation_Object__c.get(recordID)
-    audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
-    audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c')
+    audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None,'institution' : None,'comment' : None,'copyright' : None}
+    audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c').replace('"', r'\"')
     audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
-    audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
+    audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c').replace('"', r'\"')
     audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
-    audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
+    audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c').replace('"', r'\"')
     audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
+    audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c').replace('"', r'\"')
+    audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c').replace('"', r'\"')
+    audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c').replace('"', r'\"')
+
     return audioMetaDict
 
 #Converts dd/mm/yy to YYYY-MM-DD
