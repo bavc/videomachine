@@ -778,7 +778,7 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
             baseString = " -c:a libmp3lame " + mp3kpbs + " -write_xing 0 -ac 2 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
         elif processDict['derivDetails'][derivCount]['derivType'] == 6: # Basestring for MP3
-            baseString = " -c:a aac " + mp3kpbs + " -ac 2 -r 48000 "
+            baseString = " -c:a aac " + mp3kpbs + " -ac 2 -ar 44100 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.m4a")
 
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
