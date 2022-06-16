@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.1
+#Current Version: 1.6.2
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -94,9 +94,12 @@
 #   1.6.0 - 20220613
 #       - Added M4A support
 #       - Still need additional metadata field support from salesforce for CA-R metadata (mp4 metadata too)
-#   1.6.1 - 20220613
+#   1.6.1 - 20220615
 #       - Added MP4 and M4A metadata embedding
 #       - removed line that handles renaming file to NYU spec if 720x540 frame size is selected for MP4
+#   1.6.2 - 20220616
+#       - MAJOR UPDATE: Users can now specify that the created FFV1/MKV file be the Preservation file.
+#       This means that the qctools and metadata will come from the MKV instead, which will also be loaded to the presRAID
 #
 #
 #   STILL NEEDS
@@ -215,7 +218,7 @@ def main():
 
             #create video metadata dict from the mediainfo dict
             videoMetaDict = mediaInfoDict['audioMetaDict']
-            del mediaInfoDict['audioMetaDict']        #idk why i was deleting this before but i'm still doing it now for good measure
+            del mediaInfoDict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
             media_info_list.append(mediaInfoDict) # Turns the dicts into lists
 
             # Quick little method to see if we're going to crop the file. This should eventually be its own function that does tons of pre-ffmpeg processing :->
@@ -241,6 +244,15 @@ def main():
                 if processDict['derivDetails'][derivCount]['derivType'] == 1:
                     insertMetaM4A(videoMetaDict, inPath.replace(".mov","_access.mp4"))
 
+            #This is where we reprocess the metadata harvesting for the MKV master
+            if processDict['MKVMaster'] == 1:
+                processDict['MKVMaster'] = 0
+                mediaInfoDict = createMediaInfoDict(inPath.replace(".mov",".mkv"), inType, processDict)
+                del mediaInfoDict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
+                media_info_list.pop()   #we need to remove the MOV entry from the list
+                media_info_list.append(mediaInfoDict) # then we add the MKV info back to the list
+                processDict['MKVMaster'] = 1
+
 
         # Make the mediainfo CSV
         print(bcolors.OKGREEN + "DONE! Creating CSV File " + "\n" + bcolors.ENDC)
@@ -250,7 +262,11 @@ def main():
         # Rsync the File
         inPathList = []
         inPathList.append(inPath)
+        if processDict['MKVMaster'] == 1:   #add MKV file to rsync list as well
+            inPathList.append(inPath.replace(".mov",".mkv"))
         moveToBackup(inPathList, processDict, args.nsf)
+
+
 
         print(bcolors.OKBLUE + "DONE!" + "\n\n" + bcolors.ENDC)
         quit()
@@ -353,9 +369,22 @@ def main():
                             if processDict['derivDetails'][derivCount]['derivType'] == 1:
                                 insertMetaM4A(videoMetaDict, tempFilePath.replace(".mov","_access.mp4"))
 
+                        #This is where we reprocess the metadata harvesting for the MKV master
+                        if processDict['MKVMaster'] == 1:
+                            processDict['MKVMaster'] = 0
+                            mediaInfoDict = createMediaInfoDict(tempFilePath.replace(".mov",".mkv"), inType, processDict)
+                            del mediaInfoDict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
+                            media_info_list.pop()   #we need to remove the MOV entry from the list
+                            media_info_list.append(mediaInfoDict) # then we add the MKV info back to the list
+                            processDict['MKVMaster'] = 1
+
+
                     # Add to the list of paths to be rsynced
                     inPathList.append(tempFilePath)
                     fileNum += 1
+
+                    if processDict['MKVMaster'] == 1:       #Add the MKV to the list of files to be rsync'd
+                        inPathList.append(tempFilePath.replace(".mov",".mkv"))
 
                     #Progress bar fun
                     #numFiles = movCount
@@ -390,7 +419,7 @@ def fileOrDir(inPath):
 #Process a single file
 def createMediaInfoDict(filePath, inType, processDict):
     media_info_text = getMediaInfo(filePath)
-    media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'], processDict['masterExtension'])
+    media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'], processDict['masterExtension'], processDict['MKVMaster'])
     return media_info_dict
 
 #gets the Mediainfo text
@@ -401,8 +430,10 @@ def getMediaInfo(filePath):
     return media_info
 
 #process mediainfo object into a dict
-def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension):
+def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension, MKVMaster):
     # The following line initializes the dict.
+    if MKVMaster == 0:
+        masterExtension = ".mkv" #MKVMaster will only be zero when it's time to reprocess the MKV after its initial creation.
     file_dict = {"Name" : "", "instantiationIdentifierDigital__c" : "", "essenceTrackDuration__c" : "", "instantiationFileSize__c" : "", "instantiationDigital__c" : "", "essenceTrackEncodingVideo__c" : "", "essenceTrackBitDepthVideo__c" : "", "essenceTrackCompressionMode__c" : "", "essenceTrackScanType__c" : "", "essenceTrackFrameRate__c" : "", "essenceTrackFrameSize__c" : "", "essenceTrackAspectRatio__c" : "", "instantiationDataRateVideo__c" : "", "instantiationDigitalColorMatrix__c" : "", "instantiationDigitalColorSpace__c" : "", "instantiationDigitalChromaSubsampling__c" : "", "instantiationDataRateAudio__c" : "", "essenceTrackBitDepthAudio__c" : "", "essenceTrackSamplingRate__c" : "", "essenceTrackEncodingAudio__c" : "", "instantiationChannelConfigDigitalLayout__c" : "", "instantiationChannelConfigurationDigital__c" : "", "messageDigest" : "", "messageDigestAlgorithm" : "", "audioMetaDict" : {}}
     file_dict["instantiationIdentifierDigital__c"] = os.path.basename(filePath).split(".")[0]
     barcodeTemp = file_dict["instantiationIdentifierDigital__c"]
@@ -488,7 +519,7 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
         print(bcolors.FAIL + "MEDIAINFO ERROR: Could not parse File Size for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
 
         # Video Stuff
-    if masterExtension in filePath:
+    if masterExtension in filePath or MKVMaster == 0: #mkv only equals zero when this subprocess is being re-run on the master mkv
         try:
             try:
                 file_dict["essenceTrackEncodingVideo__c"] = (mi_Video_Text.split("<Codec_ID>"))[1].split("</Codec_ID>")[0]
@@ -641,7 +672,7 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
 
     try:
         # Checksum
-        if hashType == "none":
+        if hashType == "none" or MKVMaster == 1:
             file_dict["messageDigest"] = ""
             file_dict["messageDigestAlgorithm"] = ""
         else:
@@ -787,7 +818,10 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
         if videoCodec == "DV":
             qctString = " && dvrescue '" + inPath + "' -x '" + inPath + ".dvrescue.xml' -c '" + inPath + ".dvrescue.scc' -s '" + inPath + ".dvrescue.vtt'"
         else:
-            qctString = " && qcli -i '" + inPath + "'"
+            if processDict['MKVMaster'] == 1:
+                qctString = " && qcli -i '" + inPath.replace(".mov",".mkv") + "'"
+            else:
+                qctString = " && qcli -i '" + inPath + "'"
     else:
         qctString = ""
 
@@ -1232,6 +1266,13 @@ def createProcessDict(processDict):
             derivDetails['frameSize'] = int(userChoiceSize)
         else:
             derivDetails['frameSize'] = 2
+        if derivDetails['derivType'] == 3:
+        #Ask if the MKV should be the preservation file
+            userChoiceMKV = input(bcolors.OKGREEN + "\nDo you want the MKV file to be the Preservation file?\n[1] Yes\n[2] No\n\n" + bcolors.ENDC)
+            while userChoiceMKV not in ("1","2"):
+                print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
+                userChoiceMKV = input(bcolors.OKGREEN + "\n[1] Yes\n[2] No\n\n" + bcolors.ENDC)
+            processDict['MKVMaster'] = int(userChoiceMKV)
         derivList.append(derivDetails)
         processDict['derivDetails'] = derivList
 
