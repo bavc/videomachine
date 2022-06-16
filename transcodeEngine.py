@@ -96,7 +96,6 @@
 #       - Still need additional metadata field support from salesforce for CA-R metadata (mp4 metadata too)
 #   1.6.1 - 20220613
 #       - Added MP4 and M4A metadata embedding
-#       - Still need to figure out where to put "institution" field from CA-R spec
 #       - removed line that handles renaming file to NYU spec if 720x540 frame size is selected for MP4
 #
 #
