@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.2
+#Current Version: 1.6.3
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -100,7 +100,10 @@
 #   1.6.2 - 20220616
 #       - MAJOR UPDATE: Users can now specify that the created FFV1/MKV file be the Preservation file.
 #       This means that the qctools and metadata will come from the MKV instead, which will also be loaded to the presRAID
-#
+#   1.6.3 - 20220617
+#       - Fixed a dumb mistake where the MKVMaster variable wasn't initialized
+#       - Fixed an error where empty metadata fields were causing a NoneType error when i tried to strip them of quotes
+#       - Updated ffmpeg metadata embedd string generation to leave out any fields that are empty (even though ffmpeg handles this gracefully)
 #
 #   STILL NEEDS
 #       Logging
@@ -1057,15 +1060,27 @@ def insertID3(audioMetaDict, filePath):
 def insertMetaM4A(audioMetaDict, filePath):
 
     tempFilePath = os.path.splitext(filePath)[0] + "_temp" + os.path.splitext(filePath)[1]
-    M4A_Title = audioMetaDict['title']
-    M4A_Comment = audioMetaDict['comment']
-    M4A_Copyright = audioMetaDict['copyright']
-    M4A_Copyright = M4A_Copyright + " - " + audioMetaDict['institution']
+    if audioMetaDict['title'] == "":
+        M4A_Title = " "
+    else:
+        M4A_Title = "  -metadata title='" + audioMetaDict['title'] + "' "
+    if audioMetaDict['comment'] == "":
+        M4A_Comment = " "
+    else:
+        M4A_Comment = " -metadata comment='" + audioMetaDict['comment'] + "' "
+    if audioMetaDict['copyright'] == "" and audioMetaDict['institution'] == "":
+        M4A_Copyright = " "
+    elif audioMetaDict['copyright'] != "" and audioMetaDict['institution'] == "":
+        M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + "' "
+    elif audioMetaDict['copyright'] == "" and audioMetaDict['institution'] != "":
+        M4A_Copyright = " -metadata copyright='" + audioMetaDict['institution'] + "' "
+    else:
+        M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "' "
 
     if "mp4" in filePath:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart -metadata title='" + M4A_Title + "' -metadata comment='" + M4A_Comment + "' -metadata copyright='" + M4A_Copyright + "' '"+ tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
     else:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -metadata title='" + M4A_Title + "' -metadata comment='" + M4A_Comment + "' -metadata copyright='" + M4A_Copyright + "' '"+ tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath +  M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
     runCommand(ffmpeg_string)
 
     move_string = "mv '" + tempFilePath + "' '" + filePath + "'"
@@ -1139,15 +1154,40 @@ def getSFAudioMD(Barcode, audioMetaDict):
     recordID = sfData['records'][0]['Id']
     sfRecord = sf.Preservation_Object__c.get(recordID)
     audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None,'institution' : None,'comment' : None,'copyright' : None}
-    audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c').replace('"', r'\"')
-    audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
-    audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c').replace('"', r'\"')
-    audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
-    audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c').replace('"', r'\"')
+    audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c')
+    if audioMetaDict['title'] is None:
+        audioMetaDict['title'] = ""
+    else:
+        audioMetaDict['title'] = audioMetaDict['title'].replace('"', r'\"')
+    audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
+    if audioMetaDict['albumName'] is None:  #need to do this to make sure we get kill the script when these fields are empty
+        audioMetaDict['albumName'] = ""
+    else:
+        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace('"', r'\"')
+    audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
+    if audioMetaDict['artistName'] is None:
+        audioMetaDict['artistName'] = ""
+    else:
+        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace('"', r'\"')
+    audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c')
+    if audioMetaDict['institution'] is None:
+        audioMetaDict['institution'] = ""
+    else:
+        audioMetaDict['institution'] = audioMetaDict['institution'].replace('"', r'\"')
+    audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c')
+    if audioMetaDict['comment'] is None:
+        audioMetaDict['comment'] = ""
+    else:
+        audioMetaDict['comment'] = audioMetaDict['comment'].replace('"', r'\"')
+    audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c')
+    if audioMetaDict['copyright'] is None:
+        audioMetaDict['copyright'] = ""
+    else:
+        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace('"', r'\"')
     audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
-    audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c').replace('"', r'\"')
-    audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c').replace('"', r'\"')
-    audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c').replace('"', r'\"')
+    audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
+    audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
+
 
     return audioMetaDict
 
@@ -1206,6 +1246,7 @@ def createProcessDict(processDict):
     processDict['numDerivs'] = int(userChoiceNum)
 
     derivList = []
+    processDict['MKVMaster'] = 2 #initializing this variable so it won't break other proceses if it isn't updated.
 
     # What to do if user selects 0 derivatives (so they just get mediainfo, qctools, presraid)
     if processDict['numDerivs'] == 0:
