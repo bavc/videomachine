@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.3
+#Current Version: 1.6.4
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -104,6 +104,11 @@
 #       - Fixed a dumb mistake where the MKVMaster variable wasn't initialized
 #       - Fixed an error where empty metadata fields were causing a NoneType error when i tried to strip them of quotes
 #       - Updated ffmpeg metadata embedd string generation to leave out any fields that are empty (even though ffmpeg handles this gracefully)
+#   1.6.4 - 20220622
+#       - Made minor changes to meet the CA-R Spec
+#       - MP4 filename must have .HD in it
+#       - Checksum format needs to be checksum *filename, added a check for this
+#       - Checksum for MP4 needs to be generated. This is done by checking if there is _prsv.mkv in the master name, since only CA-R wants that
 #
 #   STILL NEEDS
 #       Logging
@@ -245,7 +250,12 @@ def main():
             #Insert MP4 Metadata
             for derivCount in range (0, (processDict.get('numDerivs'))):
                 if processDict['derivDetails'][derivCount]['derivType'] == 1:
-                    insertMetaM4A(videoMetaDict, inPath.replace(".mov","_access.mp4"))
+                    if "_prsv.mkv" in inPath:   #just a quick switch to make sure that CA-R files are renamed to remove "_prsv" and have ".HD" in them
+                        insertMetaM4A(videoMetaDict, inPath.replace("_prsv.mkv","_access.HD.mp4"))
+                    elif "_prsv.mov" in inPath:   #just a quick switch to make sure that CA-R files are renamed to remove "_prsv" and have ".HD" in them
+                        insertMetaM4A(videoMetaDict, inPath.replace("_prsv.mov","_access.HD.mp4"))
+                    else:
+                        insertMetaM4A(videoMetaDict, inPath.replace(".mov","_access.mp4"))
 
             #This is where we reprocess the metadata harvesting for the MKV master
             if processDict['MKVMaster'] == 1:
@@ -370,7 +380,12 @@ def main():
                         processVideo(tempFilePath, processDict, media_info_list[fileNum]["essenceTrackEncodingVideo__c"], media_info_list[fileNum]["essenceTrackAspectRatio__c"])
                         for derivCount in range (0, (processDict.get('numDerivs'))):
                             if processDict['derivDetails'][derivCount]['derivType'] == 1:
-                                insertMetaM4A(videoMetaDict, tempFilePath.replace(".mov","_access.mp4"))
+                                if "_prsv.mov" in tempFilePath:
+                                    insertMetaM4A(videoMetaDict, tempFilePath.replace("_prsv.mov","_access.HD.mp4"))
+                                elif "_prsv.mkv" in tempFilePath:
+                                    insertMetaM4A(videoMetaDict, tempFilePath.replace("_prsv.mkv","_access.HD.mp4"))
+                                else:
+                                    insertMetaM4A(videoMetaDict, tempFilePath.replace(".mov","_access.mp4"))
 
                         #This is where we reprocess the metadata harvesting for the MKV master
                         if processDict['MKVMaster'] == 1:
@@ -422,7 +437,7 @@ def fileOrDir(inPath):
 #Process a single file
 def createMediaInfoDict(filePath, inType, processDict):
     media_info_text = getMediaInfo(filePath)
-    media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'], processDict['masterExtension'], processDict['MKVMaster'])
+    media_info_dict = parseMediaInfo(filePath, media_info_text, processDict['hashType'], processDict['sidecar'], processDict['masterExtension'], processDict['MKVMaster'], processDict['hashFormat'])
     return media_info_dict
 
 #gets the Mediainfo text
@@ -433,7 +448,7 @@ def getMediaInfo(filePath):
     return media_info
 
 #process mediainfo object into a dict
-def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension, MKVMaster):
+def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension, MKVMaster, hashFormat):
     # The following line initializes the dict.
     if MKVMaster == 0:
         masterExtension = ".mkv" #MKVMaster will only be zero when it's time to reprocess the MKV after its initial creation.
@@ -448,6 +463,9 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
         elif "nyuarchives" in file_dict["instantiationIdentifierDigital__c"]:
             print(bcolors.OKGREEN + "Renaming File for NYU Specs" + bcolors.ENDC)
+            file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
+        elif "_prsv" in file_dict["instantiationIdentifierDigital__c"]:
+            print(bcolors.OKGREEN + "Renaming File for CA-R Specs" + bcolors.ENDC)
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
     except:
         print(bcolors.FAIL + "Error parsing filename, No Barcode given for this file!\n\n")
@@ -685,7 +703,19 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 sidecarPath = filePath + "." + hashType
                 f = open(sidecarPath,'w')
                 f.write(file_dict["messageDigest"])
+                if hashFormat == 2:
+                    f.write(" *" + os.path.basename(filePath))
                 f.close()
+            if sidecar == 1 and "_prsv.mkv" in filePath:        #if file contains _prsv.mkv then we assume it's a CA-R file and we're gonna make a sidecar for it
+                accessPath = filePath.replace("_prsv.mkv", "_access.HD.mp4")
+                if os.path.isfile(accessPath):       #double checks to see if file exists, this basically only works because the CA-R naming schema is so specific
+                    accessHash = hashfile(accessPath, hashType, blocksize=65536)
+                    sidecarPath = accessPath + "." + hashType
+                    f = open(sidecarPath,'w')
+                    f.write(accessHash)
+                    if hashFormat == 2:
+                        f.write(" *" + os.path.basename(accessPath))
+                    f.close()
     except:
         print(bcolors.FAIL + "Error creating checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
 
@@ -794,7 +824,10 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
             #if "720x540" in baseString:        #this was part of the NYU job, not necessary anymore
             #    processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_s.mp4")
             #else:
-            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
+            if "_prsv" in inPath:
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace("_prsv" + processDict['masterExtension'],"_access.HD.mp4")
+            else:
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(processDict['masterExtension'],"_access.mp4")
         elif processDict['derivDetails'][derivCount]['derivType'] == 2: # Basestring for ProRes/MOV
             baseString = " -c:v prores -profile:v 3 -c:a pcm_s24le -aspect " + aspectRatioColon + " -ar 48000 "
             if videoFilterString == " ":
@@ -811,7 +844,7 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
         elif processDict['derivDetails'][derivCount]['derivType'] == 5: # Basestring for MP3
             baseString = " -c:a libmp3lame " + mp3kpbs + " -write_xing 0 -ac 2 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
-        elif processDict['derivDetails'][derivCount]['derivType'] == 6: # Basestring for MP3
+        elif processDict['derivDetails'][derivCount]['derivType'] == 6: # Basestring for M4A
             baseString = " -c:a aac " + mp3kpbs + " -ac 2 -ar 44100 "
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.m4a")
 
@@ -1352,23 +1385,41 @@ def createProcessDict(processDict):
         print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
         userChoiceHash = input(bcolors.OKBLUE + "\n[1] Yes \n[2] Yes + Sidecar\n[3] No\n\n" + bcolors.ENDC)
     createHash = int(userChoiceHash)
-    if createHash == 1 or createHash == 2:
+    if createHash == 1:
         processDict['sidecar'] = createHash - 1 #Create sidecar will be 0 if no sidecar, 1 if yes sidecar
         userChoiceHashType = input(bcolors.OKGREEN + "\nWhich type of hash would you like to create?\n[1] MD5 \n[2] SHA1 \n[3] SHA256\n\n" + bcolors.ENDC)
         while userChoiceHashType not in ("1","2","3"):
             print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
             userChoiceHashType = (bcolors.OKGREEN + "[1] MD5 \n[2] SHA1 \n[3] SHA256\n\n" + bcolors.ENDC)
         hashNum = int(userChoiceHashType)
-        if hashNum == 1:
+    elif createHash == 2:
+        processDict['sidecar'] = createHash - 1 #Create sidecar will be 0 if no sidecar, 1 if yes sidecar
+        userChoiceHashType = input(bcolors.OKGREEN + "\nWhich type of hash would you like to create?\n[1] MD5 \n[2] SHA1 \n[3] SHA256\n[4] MD5 *filename \n[5] SHA1 *filename\n[6] SHA256 *filename\n\n" + bcolors.ENDC)
+        while userChoiceHashType not in ("1","2","3","4","5","6"):
+            print(bcolors.FAIL + "\nIncorrect Input! Please Select from one of the following options!" + bcolors.ENDC)
+            userChoiceHashType = (bcolors.OKGREEN + "[1] MD5 \n[2] SHA1 \n[3] SHA256\n[4] MD5 *filename \n[5] SHA1 *filename\n[6] SHA256 *filename\n\n" + bcolors.ENDC)
+        hashNum = int(userChoiceHashType)
+        # figuring out which hash type to use
+    if createHash == 1 or createHash == 2:
+        if hashNum == 1 or hashNum == 4:
             processDict['hashType'] = "md5"
-        elif hashNum == 2:
+        elif hashNum == 2 or hashNum == 5:
             processDict['hashType'] = "sha1"
-        elif hashNum == 3:
+        elif hashNum == 3 or hashNum == 6:
             processDict['hashType'] = "sha256"
         else:
             processDict['hashType'] = "none"
+        if hashNum == 1 or hashNum == 2 or hashNum == 3:      #hash format 1 means just checksum in file
+            processDict['hashFormat'] = 1
+        elif hashNum == 3 or hashNum == 4 or hashNum == 5:    #hash format 2 means just [checksum *filename] in file
+            processDict['hashFormat'] = 2
+        else:
+            processDict['hashFormat'] = 0
+
+        # figuring out which checkusm format to use
     else:
         processDict['hashType'] = "none"
+        processDict['hashFormat'] = 0
         processDict['sidecar'] = ""
     return processDict
 
