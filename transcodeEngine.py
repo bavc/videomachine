@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.4
+#Current Version: 1.6.5
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -109,7 +109,8 @@
 #       - MP4 filename must have .HD in it
 #       - Checksum format needs to be checksum *filename, added a check for this
 #       - Checksum for MP4 needs to be generated. This is done by checking if there is _prsv.mkv in the master name, since only CA-R wants that
-#
+#   1.6.5 - 20220819
+#       - Made updates to handle CA-R Audio files
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -213,7 +214,21 @@ def main():
                 if processDict['derivDetails'][derivCount]['derivType'] == 5:
                     insertID3(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.mp3"))
                 if processDict['derivDetails'][derivCount]['derivType'] == 6:
-                    insertMetaM4A(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.m4a"))
+                    if "_prsv.wav" in inPath:
+                        access_path = inPath.replace("_prsv.wav","_access.m4a")
+                        insertMetaM4A(mediaInfoDict['audioMetaDict'], access_path)
+                        if "CaliforniaRevealed" in access_path or "CA-R" in access_path:
+                            access_temp_path = access_path.replace("_prsv.wav","_access.m4a")
+                            #this is a dumb hardcoded thing where any files with _prsv.wav with m4a derivs will get CA-R Style checksums for the M4a
+                            insertMetaM4A(mediaInfoDict['audioMetaDict'], access_path)
+                            accessHash = hashfile(access_path, "md5", blocksize=65536)
+                            sidecarPath = access_path + ".md5"
+                            f = open(sidecarPath,'w')
+                            f.write(accessHash)
+                            f.write(" *" + os.path.basename(access_temp_path))
+                            f.close()
+                    else:
+                        insertMetaM4A(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.m4a"))
 
 
             #remove audio metadata from CSV Metadata Dict, necessary to keep the output CSV clean
@@ -334,7 +349,22 @@ def main():
                         if processDict['derivDetails'][derivCount]['derivType'] == 5:
                             insertID3(mediaInfoDict['audioMetaDict'], tempFilePath.replace(".wav","_access.mp3"))
                         if processDict['derivDetails'][derivCount]['derivType'] == 6:
-                            insertMetaM4A(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.m4a"))
+                            if "_prsv.wav" in tempFilePath:
+                                if "CaliforniaRevealed" in tempFilePath or "CA-R" in tempFilePath:
+                                    access_temp_path = tempFilePath.replace("_prsv.wav","_access.m4a")
+                                    #this is a dumb hardcoded thing where any files with _prsv.wav with m4a derivs will get CA-R Style checksums for the M4a
+                                    insertMetaM4A(mediaInfoDict['audioMetaDict'], access_temp_path)
+                                    accessHash = hashfile(access_temp_path, "md5", blocksize=65536)
+                                    sidecarPath = access_temp_path + ".md5"
+                                    f = open(sidecarPath,'w')
+                                    f.write(accessHash)
+                                    f.write(" *" + os.path.basename(access_temp_path))
+                                    f.close()
+                            else:
+                                insertMetaM4A(mediaInfoDict['audioMetaDict'], tempFilePath.replace(".wav","_access.m4a"))
+
+
+
 
                     #remove audio metadata from CSV Metadata Dict
                     del mediaInfoDict['audioMetaDict']
@@ -716,6 +746,16 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                     if hashFormat == 2:
                         f.write(" *" + os.path.basename(accessPath))
                     f.close()
+            if sidecar == 1 and "_prsv.wav" in filePath:        #if file contains _prsv.wav then we assume it's a CA-R file and we're gonna make a sidecar for it
+                accessPath = filePath.replace("_prsv.wav", "_access.m4a")
+                if os.path.isfile(accessPath):       #double checks to see if file exists, this basically only works because the CA-R naming schema is so specific
+                    accessHash = hashfile(accessPath, hashType, blocksize=65536)
+                    sidecarPath = accessPath + "." + hashType
+                    f = open(sidecarPath,'w')
+                    f.write(accessHash)
+                    if hashFormat == 2:
+                        f.write(" *" + os.path.basename(accessPath))
+                    f.close()
     except:
         print(bcolors.FAIL + "Error creating checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
 
@@ -846,7 +886,10 @@ def createString(inPath, processDict, processVideo, videoCodec, aspectRatio):
             processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.mp3")
         elif processDict['derivDetails'][derivCount]['derivType'] == 6: # Basestring for M4A
             baseString = " -c:a aac " + mp3kpbs + " -ac 2 -ar 44100 "
-            processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.m4a")
+            if "_prsv.wav" in inPath:
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace("_prsv.wav","_access.m4a")
+            else:
+                processDict['derivDetails'][derivCount]['outPath'] = inPath.replace(".wav","_access.m4a")
 
         ffmpeg_string = ffmpeg_string + baseString + videoFilterString + audioFilterString + " -y '" + processDict['derivDetails'][derivCount]['outPath'] + "' "
 
@@ -992,6 +1035,40 @@ def createSpectro(filePath):
 def insertBWAV(file_dict, filePath):
 
     #Handles faces and parts for title
+    if "_t01_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 01"
+    if "_t02_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 02"
+    if "_t03_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 03"
+    if "_t04_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 04"
+    if "_t05_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 05"
+    if "_t06_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 06"
+    if "_t07_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 07"
+    if "_t08_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 08"
+    if "_t09_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 09"
+    if "_t10_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 10"
+    if "_t11_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 11"
+    if "_t12_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 12"
+    if "_t13_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 13"
+    if "_t14_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 14"
+    if "_t15_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Tape 15"
+    if "_a_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Side A"
+    if "_b_" in filePath:
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Side A"
     if "Face01" in filePath:
         file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Face 01"
     if "Face02" in filePath:
@@ -1113,7 +1190,7 @@ def insertMetaM4A(audioMetaDict, filePath):
     if "mp4" in filePath:
         ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
     else:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath +  M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "'" + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
     runCommand(ffmpeg_string)
 
     move_string = "mv '" + tempFilePath + "' '" + filePath + "'"
