@@ -1268,32 +1268,32 @@ def getSFAudioMD(Barcode, audioMetaDict):
     if audioMetaDict['title'] is None:
         audioMetaDict['title'] = ""
     else:
-        audioMetaDict['title'] = audioMetaDict['title'].replace('"', r'\"')
+        audioMetaDict['title'] = audioMetaDict['title'].replace("'", "\'")
     audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
     if audioMetaDict['albumName'] is None:  #need to do this to make sure we get kill the script when these fields are empty
         audioMetaDict['albumName'] = ""
     else:
-        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace('"', r'\"')
+        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("'", "\'")
     audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
     if audioMetaDict['artistName'] is None:
         audioMetaDict['artistName'] = ""
     else:
-        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace('"', r'\"')
+        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("'", "\'")
     audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c')
     if audioMetaDict['institution'] is None:
         audioMetaDict['institution'] = ""
     else:
-        audioMetaDict['institution'] = audioMetaDict['institution'].replace('"', r'\"')
+        audioMetaDict['institution'] = audioMetaDict['institution'].replace("'", "\'")
     audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c')
     if audioMetaDict['comment'] is None:
         audioMetaDict['comment'] = ""
     else:
-        audioMetaDict['comment'] = audioMetaDict['comment'].replace('"', r'\"')
+        audioMetaDict['comment'] = audioMetaDict['comment'].replace("'", "\'")
     audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c')
     if audioMetaDict['copyright'] is None:
         audioMetaDict['copyright'] = ""
     else:
-        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace('"', r'\"')
+        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("'", "\'")
     audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
     audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
     audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
