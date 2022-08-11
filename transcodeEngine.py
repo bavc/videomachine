@@ -1068,7 +1068,7 @@ def insertBWAV(file_dict, filePath):
     if "_a_" in filePath:
         file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Side A"
     if "_b_" in filePath:
-        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Side A"
+        file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Side B"
     if "Face01" in filePath:
         file_dict['audioMetaDict']['title'] = file_dict['audioMetaDict']['title'] + " Face 01"
     if "Face02" in filePath:
