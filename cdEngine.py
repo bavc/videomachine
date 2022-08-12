@@ -125,14 +125,14 @@ def parseMediaInfo(filePath, media_info_text, hashType, file_dict):
     try:
         barcodeTemp = str(barcodeTemp).split("_")[0]
         file_dict["Name"] = barcodeTemp.split("BAVC")[1]
-        if "WDA_" in file_dict["instantiationIdentifierDigital__c"]:
-            print(bcolors.OKGREEN + "Renaming File for Disney Specs" + bcolors.ENDC)
+        if "yrlsc" in filePath:
+            print(bcolors.OKGREEN + "Renaming File for UCLA Spec (removing BAVC barcode)\n" + bcolors.ENDC)
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
         elif "nyuarchives" in file_dict["instantiationIdentifierDigital__c"]:
-            print(bcolors.OKGREEN + "Renaming File for NYU Specs" + bcolors.ENDC)
+            print(bcolors.OKGREEN + "Renaming File for NYU Spec (removing BAVC barcode)\n" + bcolors.ENDC)
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
         elif "_prsv" in file_dict["instantiationIdentifierDigital__c"]:
-            print(bcolors.OKGREEN + "Renaming File for CA-R Specs" + bcolors.ENDC)
+            print(bcolors.OKGREEN + "Renaming File for CA-R Spec (removing BAVC barcode)\n" + bcolors.ENDC)
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
     except:
         print(bcolors.FAIL + "Error parsing filename, No Barcode given for this file!\n\n")
