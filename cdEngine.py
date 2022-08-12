@@ -39,6 +39,7 @@ def main():
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional)")
     parser.add_argument('-c','--csvname',dest='c', help="the name of the csv file (optional)")
     parser.add_argument('-s','--Split_Tracks',dest='s',action ='store_true',default=False, help="Splits the file into tracks according to CUE file")
+    parser.add_argument('-m','--Make-Full-MP3',dest='m',action ='store_true',default=False, help="Makes an unsplit MP3. This flag only works if the -s flag is also run")
     args = parser.parse_args()
 
     #handling the input args. This is kind of a mess in this version
@@ -93,11 +94,11 @@ def main():
         #intialize file dictionary
         file_dict = {"Name" : "", "instantiationIdentifierDigital__c" : "", "essenceTrackDuration__c" : "", "instantiationFileSize__c" : "", "instantiationDigital__c" : "", "essenceTrackEncodingVideo__c" : "", "essenceTrackBitDepthVideo__c" : "", "essenceTrackCompressionMode__c" : "", "essenceTrackScanType__c" : "", "essenceTrackFrameRate__c" : "", "essenceTrackFrameSize__c" : "", "essenceTrackAspectRatio__c" : "", "instantiationDataRateVideo__c" : "", "instantiationDigitalColorMatrix__c" : "", "instantiationDigitalColorSpace__c" : "", "instantiationDigitalChromaSubsampling__c" : "", "instantiationDataRateAudio__c" : "", "essenceTrackBitDepthAudio__c" : "", "essenceTrackSamplingRate__c" : "", "essenceTrackEncodingAudio__c" : "", "instantiationChannelConfigDigitalLayout__c" : "", "instantiationChannelConfigurationDigital__c" : "", "messageDigest" : "", "messageDigestAlgorithm" : "", "audioMetaDict" : {}}
 
-        #get barcodes
-        file_dict["Name"] = getBarcode(f)
+        #harvest .wav file metadata
+        file_dict = createMediaInfoDict(f, file_dict)
+        media_info_list.append(file_dict)
 
         #get metadata from sf
-        #file_dict["audioMetaDict"] = getSFAudioMD(file_dict["Name"], file_dict["audioMetaDict"])
         file_dict = getAudioMetadata(file_dict, f, file_dict["Name"])
 
         #create bwf file with metadata
@@ -108,10 +109,6 @@ def main():
 
         #create derivatives with metadata (split if requested)
         createMP3(file_dict, f, args)
-
-        #harvest .wav file metadata
-        file_dict = createMediaInfoDict(f, file_dict)
-        media_info_list.append(file_dict)
 
     #insert mediainfo into salesforce
     createCSV(media_info_list,csv_path)	# this instances process the big list of dicts
@@ -266,6 +263,15 @@ def createMP3(file_dict, wav_path, args):
             w=w+1
             #insert metadat into mp3 we just created
             insertID3(file_dict["audioMetaDict"], split_mp3_path)
+        if args.m:
+            #if run with m flag we'll also make an unsplit mp3
+            mp3_path = wav_path.replace(".wav", ".mp3")
+            ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + wav_path + "' -c:a libmp3lame -b:a 320k -write_xing 0 -ac 2 -y '" + mp3_path + "'"
+            runCommand(ffmpeg_string)
+
+            #insert metadat into mp3 we just created
+            insertID3(file_dict["audioMetaDict"], mp3_path)
+
     else:
         mp3_path = wav_path.replace(".wav", ".mp3")
         ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + wav_path + "' -c:a libmp3lame -b:a 320k -write_xing 0 -ac 2 -y '" + mp3_path + "'"
@@ -344,6 +350,8 @@ def insertBWAV(file_dict, filePath):
         bwavDescrition = file_dict['audioMetaDict']['title']
     elif file_dict['audioMetaDict']['title'] == "":
         bwavDescrition = file_dict['audioMetaDict']['createdDate']
+    elif file_dict['audioMetaDict']['createdDate'].split("-")[0] in file_dict['audioMetaDict']['title']:     #if the title already contains the date then don't add the date to the description
+        bwavDescrition = file_dict['audioMetaDict']['title']
     else:
         bwavDescrition = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['createdDate']
 
@@ -379,7 +387,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='TIMESTAMP' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='TIMESTAMP' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
 
     runCommand(bwfString)
 
