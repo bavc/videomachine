@@ -96,7 +96,6 @@ def main():
 
         #harvest .wav file metadata
         file_dict = createMediaInfoDict(f, file_dict)
-        media_info_list.append(file_dict)
 
         #get metadata from sf
         file_dict = getAudioMetadata(file_dict, f, file_dict["Name"])
@@ -109,6 +108,10 @@ def main():
 
         #create derivatives with metadata (split if requested)
         createMP3(file_dict, f, args)
+
+        #clean up file_dict and add it to the list of metadata to be uploaded to SF
+        del file_dict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
+        media_info_list.append(file_dict)
 
     #insert mediainfo into salesforce
     createCSV(media_info_list,csv_path)	# this instances process the big list of dicts
@@ -167,7 +170,7 @@ def parseMediaInfo(filePath, media_info_text, hashType, file_dict):
         except:
             print(bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Audio Bit Depth for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
     try:
-        samplingRate = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
+        file_dict["essenceTrackSamplingRate__c"] = (mi_Audio_Text.split("<Sampling_rate>"))[1].split("</Sampling_rate>")[0]
         #if samplingRate == "44100":
         #    samplingRate = "44.1"
         #else:
@@ -225,7 +228,6 @@ def parseMediaInfo(filePath, media_info_text, hashType, file_dict):
 def createMediaInfoDict(filePath, file_dict):
     media_info_text = getMediaInfo(filePath)
     media_info_dict = parseMediaInfo(filePath, media_info_text, "md5", file_dict)
-    del media_info_dict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
     return media_info_dict
 
 #gets the Mediainfo text
@@ -387,7 +389,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='TIMESTAMP' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='TIMESTAMP' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='TIMESTAMP' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='XLD' --ITCH='BAVC' --OriginationTime='TIMESTAMP' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
 
     runCommand(bwfString)
 
