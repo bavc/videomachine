@@ -103,6 +103,9 @@ def main():
         #create bwf file with metadata
         insertBWAV(file_dict, f)
 
+        #harvest checksums
+        file_dict = harvestChecksum(file_dict, f, "md5")
+
         #create spectrogram
         createSpectro(f)
 
@@ -121,7 +124,7 @@ def main():
     quit()
 
 #process mediainfo object into a dict
-def parseMediaInfo(filePath, media_info_text, hashType, file_dict):
+def parseMediaInfo(filePath, media_info_text, file_dict):
     # The following line initializes the dict.
     file_dict["instantiationIdentifierDigital__c"] = os.path.basename(filePath).split(".")[0]
     barcodeTemp = file_dict["instantiationIdentifierDigital__c"]
@@ -210,24 +213,27 @@ def parseMediaInfo(filePath, media_info_text, hashType, file_dict):
         else:
             print(bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Channel Layout for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
 
-    #try:
-    # Checksum
-    if hashType == "none":
-        file_dict["messageDigest"] = ""
-        file_dict["messageDigestAlgorithm"] = ""
-    else:
-        file_dict["messageDigest"] = hashfile(filePath, hashType, blocksize=65536)
-        file_dict["messageDigestAlgorithm"] = hashType
+    return file_dict
 
-    #except:
-    #    print(bcolors.FAIL + "Error creating checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+#Harvest checksum
+def harvestChecksum(file_dict, filePath, hashType):
+    print(bcolors.OKBLUE +  "Harvesting checksum for file: " + os.path.basename(filePath) + "\n" + bcolors.ENDC)
+    try:
+        if hashType == "none":
+            file_dict["messageDigest"] = ""
+            file_dict["messageDigestAlgorithm"] = ""
+        else:
+            file_dict["messageDigest"] = hashfile(filePath, hashType, blocksize=65536)
+            file_dict["messageDigestAlgorithm"] = hashType
+    except:
+        print(bcolors.FAIL + "Error creating checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
 
     return file_dict
 
 #Process a single file
 def createMediaInfoDict(filePath, file_dict):
     media_info_text = getMediaInfo(filePath)
-    media_info_dict = parseMediaInfo(filePath, media_info_text, "md5", file_dict)
+    media_info_dict = parseMediaInfo(filePath, media_info_text, file_dict)
     return media_info_dict
 
 #gets the Mediainfo text
@@ -589,7 +595,6 @@ def runCommand(cmd):
 
 # Generate checksum for the file
 def hashfile(filePath, hashalg, blocksize=65536):
-    print(bcolors.OKBLUE +  "Harvesting checksum for file: " + os.path.basename(filePath) + "\n" + bcolors.ENDC)
     afile = open(filePath,'rb')
     hasher = hashlib.new(hashalg) #grab the hashing algorithm decalred by user
     buf = afile.read(blocksize) # read the file into a buffer cause it's more efficient for big files
