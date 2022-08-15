@@ -1,8 +1,12 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.1.0
+#Current Version: 1.0.0
 #Version History
+#   1.0.0 - 20220812
+#       finished version 1!
+#       stamped out a bunch of bugs and corner cases
+#       origination date and time are based on encoding time. if encoding time is missing then it is bsed off script run time.
 #   0.1.0 - 20220812
 #       getting this script up and running
 
@@ -367,7 +371,15 @@ def insertBWAV(file_dict, filePath):
 
     bwavOriginatorReference = file_dict["Name"]
 
-    bwavOriginationDate = file_dict['audioMetaDict']['digiDate']
+    if file_dict['audioMetaDict']['encodedDate'] == None:
+        bwavOriginationDateString = " --OriginationDate='TIMESTAMP' --IDIT='TIMESTAMP' "
+    else:
+        bwavOriginationDateString = " --OriginationDate=" + file_dict['audioMetaDict']['encodedDate'] + " --IDIT=" + file_dict['audioMetaDict']['encodedDate'] + " "
+    if file_dict['audioMetaDict']['encodedDate'] == None:
+        bwavOriginationTimeString = " --OriginationTime='TIMESTAMP' "
+    else:
+        bwavOriginationTimeString = "--OriginationTime='" + file_dict['audioMetaDict']['encodedTime'] + "'"
+    #bwavOriginationDate = file_dict['audioMetaDict']['digiDate']
 
     if file_dict['audioMetaDict']['createdDate'] == "0001-01-01":
         ICRD = ""
@@ -395,7 +407,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='TIMESTAMP' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='XLD' --ITCH='BAVC' --OriginationTime='TIMESTAMP' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "'" + bwavOriginationDateString + " --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='XLD' --ITCH='BAVC' " + bwavOriginationTimeString  + " --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
 
     runCommand(bwfString)
 
@@ -564,8 +576,9 @@ def convertDate(inDate):
 
 def getAudioMetadata(file_dict, filePath, barcode):
 
-    #Get metadata to embed from salesforce
     audioMetaDict = {}
+
+    #Get metadata to embed from salesforce
     try:
         audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
     except:
@@ -583,6 +596,22 @@ def getAudioMetadata(file_dict, filePath, barcode):
     if audioMetaDict['albumName'] == None:
         audioMetaDict['albumName'] = input(bcolors.OKBLUE + "Please enter the Collection/Album name of this object: " + bcolors.ENDC)
     audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
+
+    #check and see if encoding date exists, if so we use this info. If not we use digidate
+    audioMetaDict['encodedDate'] = None
+    audioMetaDict['encodedTime'] = None
+    medaiainfo_date_string = "/usr/local/bin/mediainfo -f --Language=raw '" +  filePath + "' | grep Encoded_Date | awk '{print $3}'"
+    encoded_date = runCommand(medaiainfo_date_string).decode().rstrip('\n')
+    medaiainfo_time_string = "/usr/local/bin/mediainfo -f --Language=raw '" +  filePath + "' | grep Encoded_Date | awk '{print $4}'"
+    encoded_time = runCommand(medaiainfo_time_string).decode().rstrip('\n')
+    if encoded_date == "":
+        audioMetaDict['encodedDate'] = None
+    else:
+        audioMetaDict['encodedDate'] = encoded_date
+    if encoded_time == "":
+        audioMetaDict['encodedTime'] = None
+    else:
+        audioMetaDict['encodedTime'] = encoded_time
 
     file_dict['audioMetaDict'] = audioMetaDict
     return file_dict
