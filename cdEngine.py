@@ -1,8 +1,10 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.0.0
+#Current Version: 1.0.1
 #Version History
+#   1.0.1 - 20220813
+#       script will get created date/time if i can't find encoded date/time
 #   1.0.0 - 20220812
 #       finished version 1!
 #       stamped out a bunch of bugs and corner cases
