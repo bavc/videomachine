@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.5
+#Current Version: 1.6.6
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -111,6 +111,10 @@
 #       - Checksum for MP4 needs to be generated. This is done by checking if there is _prsv.mkv in the master name, since only CA-R wants that
 #   1.6.5 - 20220819
 #       - Made updates to handle CA-R Audio files
+#   1.6.6 - 20220815
+#       - Added better error handling for the following:
+#       - Fails gracefully now when input directory doesn't have any valid Files
+#       - Fails gracefully when encountering a broken file
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -205,6 +209,9 @@ def main():
         if inPath.endswith(".wav"):
             #Harvest mediainfo metadata, there is a subprocess in this script that inserts the BWAV metadata
             mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
+            if mediaInfoDict == None:
+                print(bcolors.FAIL + "\nFatal Error. Please check the input file and try again!" + bcolors.ENDC)
+                quit()
 
             #Transcode the File
             processVideo(inPath, processDict, "WAV", "")
@@ -225,7 +232,7 @@ def main():
                             sidecarPath = access_path + ".md5"
                             f = open(sidecarPath,'w')
                             f.write(accessHash)
-                            f.write(" *" + os.path.basename(access_temp_path))
+                            f.write(" *" + os.path.basename(access_temp_path).replace("BAVC" + (mediaInfoDict["Name"] + "_"),""))
                             f.close()
                     else:
                         insertMetaM4A(mediaInfoDict['audioMetaDict'], inPath.replace(".wav","_access.m4a"))
@@ -238,6 +245,9 @@ def main():
         else:
             #Harvest mediainfo metadata
             mediaInfoDict = createMediaInfoDict(inPath, inType, processDict)
+            if mediaInfoDict == None:
+                print(bcolors.FAIL + "\nFatal Error. Please check the input file and try again!" + bcolors.ENDC)
+                quit()
 
             #create video metadata dict from the mediainfo dict
             videoMetaDict = mediaInfoDict['audioMetaDict']
@@ -276,6 +286,9 @@ def main():
             if processDict['MKVMaster'] == 1:
                 processDict['MKVMaster'] = 0
                 mediaInfoDict = createMediaInfoDict(inPath.replace(".mov",".mkv"), inType, processDict)
+                if mediaInfoDict == None:
+                    print(bcolors.FAIL + "\nFatal Error. Please check the input file and try again!" + bcolors.ENDC)
+                    quit()
                 del mediaInfoDict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
                 media_info_list.pop()   #we need to remove the MOV entry from the list
                 media_info_list.append(mediaInfoDict) # then we add the MKV info back to the list
@@ -330,6 +343,7 @@ def main():
                         wavCount = wavCount + 1
 
         #now we walk through the directory to process each file
+
         for root, directories, filenames in os.walk(inPath):
             fileNum = 0
             inPathList = []
@@ -340,6 +354,9 @@ def main():
                 if tempFilePath.endswith('.wav') and not tempFilePath.endswith('_mezzanine.wav') and not filename.startswith('.'):
                     #Harvest mediainfo metadata, there is a subprocess in this script that inserts the BWAV metadata
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
+                    if mediaInfoDict == None:
+                        print(bcolors.FAIL + "\nFatal Error. Please check the input file and try again!" + bcolors.ENDC)
+                        continue
 
                     #Transcode the file
                     processVideo(tempFilePath, processDict, "WAV", "")
@@ -358,7 +375,7 @@ def main():
                                     sidecarPath = access_temp_path + ".md5"
                                     f = open(sidecarPath,'w')
                                     f.write(accessHash)
-                                    f.write(" *" + os.path.basename(access_temp_path))
+                                    f.write(" *" + os.path.basename(access_temp_path).replace("BAVC" + (mediaInfoDict["Name"] + "_"),""))
                                     f.close()
                             else:
                                 insertMetaM4A(mediaInfoDict['audioMetaDict'], tempFilePath.replace(".wav","_access.m4a"))
@@ -385,6 +402,9 @@ def main():
 
                     #Harvest mediainfo metadata
                     mediaInfoDict = createMediaInfoDict(tempFilePath, inType, processDict)
+                    if mediaInfoDict == None:
+                        print(bcolors.FAIL + "\nFatal Error. Please check the input file and try again!" + bcolors.ENDC)
+                        continue
 
                     #create video metadata dict from the mediainfo dict
                     videoMetaDict = mediaInfoDict['audioMetaDict']
@@ -421,6 +441,9 @@ def main():
                         if processDict['MKVMaster'] == 1:
                             processDict['MKVMaster'] = 0
                             mediaInfoDict = createMediaInfoDict(tempFilePath.replace(".mov",".mkv"), inType, processDict)
+                            if mediaInfoDict == None:
+                                print(bcolors.FAIL + "\nFatal Error. Please check the input file and try again!" + bcolors.ENDC)
+                                continue
                             del mediaInfoDict['audioMetaDict']        #need to delete the extra embedded metadata or the CSV can't be created properly
                             media_info_list.pop()   #we need to remove the MOV entry from the list
                             media_info_list.append(mediaInfoDict) # then we add the MKV info back to the list
@@ -440,6 +463,9 @@ def main():
                     #sys.stdout.write('\r')
                     #sys.stdout.write("[%-20s] %d%% %s \n" % ('='*int(percentDone/5.0), percentDone, filename))
                     #sys.stdout.flush()
+        if inPathList == []:
+            print(bcolors.FAIL + "\nNo valid input files were found in this folder. Please check the files or directory and try again\n" + bcolors.ENDC)
+            quit()
 
         print(bcolors.OKBLUE + "Done!\n" + bcolors.ENDC)
         print(bcolors.OKGREEN + "DONE! Creating CSV File " + "\n\n" + bcolors.ENDC)
@@ -560,6 +586,9 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
             except Exception as e:
                 print(bcolors.FAIL + "METADATA ERROR: Could not make spectrogram for file " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
                 print(sys.exc_info())
+        else:
+            print(bcolors.FAIL + "METADATA ERROR: Unable to parse digital file format for file " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
+            return None
 
 
     except:
@@ -734,7 +763,7 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                 f = open(sidecarPath,'w')
                 f.write(file_dict["messageDigest"])
                 if hashFormat == 2:
-                    f.write(" *" + os.path.basename(filePath))
+                    f.write(" *" + os.path.basename(filePath).replace("BAVC" + (file_dict["Name"] + "_"),""))
                 f.close()
             if sidecar == 1 and "_prsv.mkv" in filePath:        #if file contains _prsv.mkv then we assume it's a CA-R file and we're gonna make a sidecar for it
                 accessPath = filePath.replace("_prsv.mkv", "_access.HD.mp4")
@@ -744,7 +773,7 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                     f = open(sidecarPath,'w')
                     f.write(accessHash)
                     if hashFormat == 2:
-                        f.write(" *" + os.path.basename(accessPath))
+                        f.write(" *" + os.path.basename(accessPath).replace("BAVC" + (file_dict["Name"] + "_"),""))
                     f.close()
             if sidecar == 1 and "_prsv.wav" in filePath:        #if file contains _prsv.wav then we assume it's a CA-R file and we're gonna make a sidecar for it
                 accessPath = filePath.replace("_prsv.wav", "_access.m4a")
@@ -754,7 +783,7 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
                     f = open(sidecarPath,'w')
                     f.write(accessHash)
                     if hashFormat == 2:
-                        f.write(" *" + os.path.basename(accessPath))
+                        f.write(" *" + os.path.basename(accessPath).replace("BAVC" + (file_dict["Name"] + "_"),""))
                     f.close()
     except:
         print(bcolors.FAIL + "Error creating checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC)
@@ -1188,7 +1217,7 @@ def insertMetaM4A(audioMetaDict, filePath):
         M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "' "
 
     if "mp4" in filePath:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "' -c copy " + tempFilePath + "'"
     else:
         ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "'" + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
     runCommand(ffmpeg_string)
@@ -1268,32 +1297,32 @@ def getSFAudioMD(Barcode, audioMetaDict):
     if audioMetaDict['title'] is None:
         audioMetaDict['title'] = ""
     else:
-        audioMetaDict['title'] = audioMetaDict['title'].replace("'", "\'")
+        audioMetaDict['title'] = audioMetaDict['title'].replace("'", "")
     audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
     if audioMetaDict['albumName'] is None:  #need to do this to make sure we get kill the script when these fields are empty
         audioMetaDict['albumName'] = ""
     else:
-        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("'", "\'")
+        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("'", "")
     audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
     if audioMetaDict['artistName'] is None:
         audioMetaDict['artistName'] = ""
     else:
-        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("'", "\'")
+        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("'", "")
     audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c')
     if audioMetaDict['institution'] is None:
         audioMetaDict['institution'] = ""
     else:
-        audioMetaDict['institution'] = audioMetaDict['institution'].replace("'", "\'")
+        audioMetaDict['institution'] = audioMetaDict['institution'].replace("'", "")
     audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c')
     if audioMetaDict['comment'] is None:
         audioMetaDict['comment'] = ""
     else:
-        audioMetaDict['comment'] = audioMetaDict['comment'].replace("'", "\'")
+        audioMetaDict['comment'] = audioMetaDict['comment'].replace("'", "")
     audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c')
     if audioMetaDict['copyright'] is None:
         audioMetaDict['copyright'] = ""
     else:
-        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("'", "\'")
+        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("'", "")
     audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
     audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
     audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
