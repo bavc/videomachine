@@ -29,6 +29,7 @@ import hashlib                      # used for creating the md5 checksum
 import subprocess                   # used for running ffmpeg, qcli, and rsync
 import shlex                        # used for properly splitting the ffmpeg/rsync strings
 import argparse                     # used for parsing input arguments
+import datetime
 from simple_salesforce import Salesforce
 
 # Gather our code in a main() function
@@ -604,12 +605,25 @@ def getAudioMetadata(file_dict, filePath, barcode):
     encoded_date = runCommand(medaiainfo_date_string).decode().rstrip('\n')
     medaiainfo_time_string = "/usr/local/bin/mediainfo -f --Language=raw '" +  filePath + "' | grep Encoded_Date | awk '{print $4}'"
     encoded_time = runCommand(medaiainfo_time_string).decode().rstrip('\n')
+    medaiainfo_date_string_2 = "/usr/bin/GetFileInfo -d '" +  filePath + "' | awk '{print $1}'"
+    created_date = runCommand(medaiainfo_date_string_2).decode().rstrip('\n')
+    created_date = datetime.datetime.strptime(created_date, "%m/%d/%Y").strftime("%Y-%m-%d")
+    medaiainfo_time_string_2 = "/usr/bin/GetFileInfo -d '" +  filePath + "' | awk '{print $2}'"
+    created_time = runCommand(medaiainfo_time_string_2).decode().rstrip('\n')
+
     if encoded_date == "":
-        audioMetaDict['encodedDate'] = None
+        if created_date == "":
+            audioMetaDict['encodedDate'] = None
+        else:
+            audioMetaDict['encodedDate'] = created_date
     else:
         audioMetaDict['encodedDate'] = encoded_date
+
     if encoded_time == "":
-        audioMetaDict['encodedTime'] = None
+        if created_time == "":
+            audioMetaDict['encodedTime'] = None
+        else:
+            audioMetaDict['encodedTime'] = created_time
     else:
         audioMetaDict['encodedTime'] = encoded_time
 
