@@ -1217,9 +1217,9 @@ def insertMetaM4A(audioMetaDict, filePath):
         M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "' "
 
     if "mp4" in filePath:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "' -c copy " + tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "' " + tempFilePath + "'"
     else:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "'" + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy " + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
     runCommand(ffmpeg_string)
 
     move_string = "mv '" + tempFilePath + "' '" + filePath + "'"
