@@ -115,6 +115,9 @@
 #       - Added better error handling for the following:
 #       - Fails gracefully now when input directory doesn't have any valid Files
 #       - Fails gracefully when encountering a broken file
+#   1.6.7 - 20220822
+#       - Fixed metadata date handling when there is no creation date
+#
 #   STILL NEEDS
 #       Logging
 #       User Verification
@@ -1131,18 +1134,18 @@ def insertBWAV(file_dict, filePath):
 
 
     # Formats Descrition to "Title; Date"
-    if file_dict['audioMetaDict']['createdDate'] == "0001-01-01" and file_dict['audioMetaDict']['title'] == "":
-        bwavDescrition = ""
-    elif file_dict['audioMetaDict']['createdDate'] == "0001-01-01":
-        bwavDescrition = file_dict['audioMetaDict']['title']
+    if file_dict['audioMetaDict']['createdDate'] == "1900-01-01" and file_dict['audioMetaDict']['title'] == "":
+        bwavDescription = ""
+    elif file_dict['audioMetaDict']['createdDate'] == "1900-01-01":
+        bwavDescription = file_dict['audioMetaDict']['title']
     elif file_dict['audioMetaDict']['title'] == "":
-        bwavDescrition = file_dict['audioMetaDict']['createdDate']
+        bwavDescription = file_dict['audioMetaDict']['createdDate']
     else:
-        bwavDescrition = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['createdDate']
+        bwavDescription = file_dict['audioMetaDict']['title'] + "; " + file_dict['audioMetaDict']['createdDate']
     bwavOriginator = "BAVC"
     bwavOriginatorReference = file_dict["Name"]
     bwavOriginationDate = file_dict['audioMetaDict']['digiDate']
-    if file_dict['audioMetaDict']['createdDate'] == "0001-01-01":
+    if file_dict['audioMetaDict']['createdDate'] == "1900-01-01":
         ICRD = ""
     else:
         ICRD = file_dict['audioMetaDict']['createdDate']
@@ -1182,7 +1185,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescrition + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescription + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
     runCommand(bwfString)
 
 # Inserting ID3 metadata in master audio files
@@ -1328,12 +1331,13 @@ def getSFAudioMD(Barcode, audioMetaDict):
     audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
 
 
+
     return audioMetaDict
 
 #Converts dd/mm/yy to YYYY-MM-DD
 def convertDate(inDate):
     if (inDate == None) or (inDate == ""):
-        formattedDate = "0001-01-01"
+        formattedDate = "1900-01-01"
     else:#              As far as I can tell salesforce already returns ISO-8601 so we just need the check for an empty field above
     #    formattedDate = datetime.datetime.strptime(inDate, "%d/%m/%Y")    return formattedDate
         formattedDate = inDate
