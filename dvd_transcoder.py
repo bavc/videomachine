@@ -37,15 +37,15 @@ def main():
         quit()
     if args.f is None:
         output_format = "v210"
-        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l "
+        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l -ar 4800 "
         output_ext = ".mov"
     elif "v210" in args.f:
         output_format = "v210"
-        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l "
+        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l -ar 48000 "
         output_ext = ".mov"
     elif "ProRes" in args.f:
         output_format = "ProRes"
-        transcode_string = " -c:v prores -profile:v 3 -c:a pcm_s24le "
+        transcode_string = " -c:v prores -profile:v 3 -c:a pcm_s24le -ar 48000 "
         output_ext = ".mov"
     elif "H.264" in args.f:
         output_format = "H.264"
@@ -57,7 +57,7 @@ def main():
         output_ext = ".mkv"
     else:
         output_format = "v210"
-        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l "
+        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l -ar 48000 "
         output_ext = ".mov"
     if args.o is None:
         output_path = os.path.dirname(args.i) + "/"
@@ -87,7 +87,6 @@ def main():
 
     #concatenate vobs into a sungle file, format of the user's selection
     concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
-
 
     #CLEANUP
     print "Removing Temporary Files..."
