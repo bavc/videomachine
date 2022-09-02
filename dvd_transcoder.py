@@ -69,7 +69,7 @@ def main():
         ffmpeg_command = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic "
 
 
-    print "Removing Temporary Files"
+    #print "Removing Temporary Files"
 
     #This parts mounts the iso
     print "Mounting ISO..."
@@ -175,7 +175,10 @@ def move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
     for v in input_vobList:
         v_name = v.split("/")[-1]
         out_vob_path = first_file_path + ".VOBS/" + v_name
-        ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"
+        #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"        #original without more recent additions
+        #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with just tbs fix
+        #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -af apad -c:v copy -c:a ac3 -ar 48000 -shortest -avoid_negative_ts make_zero -fflags +genpts -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with only audio pad
+        ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -af apad -c:v copy -c:a ac3 -ar 48000 -shortest -avoid_negative_ts make_zero -fflags +genpts -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with tbs fix and audio pad
         run_command(ffmpeg_vob_copy_string)
 
 
