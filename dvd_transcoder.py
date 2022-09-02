@@ -64,9 +64,10 @@ def main():
 
     if args.v:
         ffmpeg_command = "/usr/local/bin/ffmpeg "
+        print "Running in Verbose Mode"
     else:
         ffmpeg_command = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic "
-        print "Running in Verbose Mode"
+
 
     print "Removing Temporary Files"
 
