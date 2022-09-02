@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#Current Version: 0.9.2
+#Current Version: 0.9.3
 #Version History
 #   0.1 - 20170707
 #       Creates a CSV file with all of the correct field names to match up with the SalesForce table. No bells or whistles. Input args suck
@@ -29,6 +29,8 @@
 #       Fixed a big that allowed Disney ProRes files to be processed without PR flag
 #   0.9.2 - 20220110
 #       Added support for MPEG-TS m2t files from HDV capture
+#   0.9.3 - 20220902
+#       Added support for ISO Files
 
 # import modules used here -- sys is a very standard one
 import os, sys
@@ -50,6 +52,7 @@ def main():
     parser.add_argument('-pr','--ProRes',dest='pr',action ='store_true',default=False, help="Allows parsing of ProRes files when turned on")
     parser.add_argument('-mkv','--Matroska',dest='mkv',action ='store_true',default=False, help="Looks only for Matroska files")
     parser.add_argument('-m2t','--MPEGTS',dest='m2t',action ='store_true',default=False, help="Looks only for .m2t files, which are HDV files")
+    parser.add_argument('-iso','--ISO',dest='iso',action ='store_true',default=False, help="Looks only for .iso files, which are images made from DVDs")
     args = parser.parse_args()
 
     #handling the input args. This is kind of a mess in this version
@@ -63,8 +66,10 @@ def main():
     #initialize master file extension in processDict
     if args.mkv is True:
         masterExtension = ".mkv"
-    if args.m2t is True:
+    elif args.m2t is True:
         masterExtension = ".m2t"
+    elif args.iso is True:
+        masterExtension = ".iso"
     else:
         masterExtension = ".mov"
 
@@ -180,18 +185,19 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         except:
             mi_Audio_Text = (media_info_text.split("<track type=\"Audio\" typeorder=\"1\">"))[1].split("</track>")[0]
     except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse tracks for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+        if ".iso" in filePath:
+            pass
+        else:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse tracks for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
     # General Stuff
 
     try:
-        file_dict["essenceTrackDuration__c"] = (mi_General_Text.split("<Duration>"))[6].split("</Duration>")[0]
-    except:
-        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Duration for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
-    try:
         fileFormatTemp = (mi_General_Text.split("<Format>"))[1].split("</Format>")[0]
         if fileFormatTemp == "MPEG-4":
             file_dict["instantiationDigital__c"] = "MOV"
+        elif "ISO" in fileFormatTemp:
+            file_dict["instantiationDigital__c"] = "ISO"
         elif fileFormatTemp == "Matroska":
             file_dict["instantiationDigital__c"] = "MKV"
         elif fileFormatTemp == "DV":
@@ -206,6 +212,22 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         file_dict["instantiationFileSize__c"] = (mi_General_Text.split("<File_size>"))[6].split("</File_size>")[0]
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse File Size for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+
+    if file_dict["instantiationDigital__c"] != "ISO":
+        try:
+            file_dict["essenceTrackDuration__c"] = (mi_General_Text.split("<Duration>"))[6].split("</Duration>")[0]
+        except:
+            print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Duration for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+
+        # Checksum
+    try:
+        file_dict["messageDigest"] = hashfile(filePath, "md5", blocksize=65536)
+        file_dict["messageDigestAlgorithm"] = "md5"
+    except:
+        print bcolors.FAIL + "CHECKSUMS ERROR: Could not harvest checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
+
+    if file_dict["instantiationDigital__c"] == "ISO":
+        return file_dict
 
         # Video Stuff
 
@@ -267,7 +289,10 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         frame_height = (mi_Video_Text.split("<Height>"))[1].split("</Height>")[0]
     except:
         print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Frame Height for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
-    file_dict["essenceTrackFrameSize__c"] = frame_width + " x " + frame_height
+    try:
+        file_dict["essenceTrackFrameSize__c"] = frame_width + " x " + frame_height
+    except:
+        print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Frame Size for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
     try:
         file_dict["essenceTrackAspectRatio__c"] = (mi_Video_Text.split("<Display_aspect_ratio>"))[2].split("</Display_aspect_ratio>")[0]
     except:
@@ -354,12 +379,6 @@ def parseMediaInfo(filePath, media_info_text, proresFlag):
         else:
             print bcolors.FAIL + "MEDIAINFO ERROR: Could not parse Channel Layout for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
-        # Checksum
-    try:
-        file_dict["messageDigest"] = hashfile(filePath, "md5", blocksize=65536)
-        file_dict["messageDigestAlgorithm"] = "md5"
-    except:
-        print bcolors.FAIL + "CHECKSUMS ERROR: Could not harvest checksum for " + file_dict["instantiationIdentifierDigital__c"] + "\n\n" + bcolors.ENDC
 
     return file_dict
 
