@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # DVD Transcoder
 #Version History
-#   0.1.0 - 20180314
-#       Got it mostly working. current known issues:
-#           No Aspect Ratio Testing
+#   0.1.0 - 20220902
+#       New versio that just cats the vobs using bash then transcodes from there lol
+#
 #
 #
 # import modules used here -- sys is a very standard one
@@ -26,6 +26,7 @@ def main():
     parser.add_argument('-i','--input',dest='i', help="the path to the input directory or files")
     parser.add_argument('-f','--format',dest='f', help="The output format (defaults to v210. Pick from v210, ProRes, H.264, FFv1)")
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional, defaults to the same as the input)")
+    parser.add_argument('-m','--mode',dest='m', help="Selects concatenation mode. 1 = Simple Bash Cat, 2 = FFmpeg Cat")
     parser.add_argument('-v','--verbose',dest='v',action='store_true',default=False,help='run in verbose mode (including ffmpeg info)')
     #parser.add_argument('-c','--csvname',dest='c', help="the name of the csv file (optional)")
     args = parser.parse_args()
@@ -34,6 +35,18 @@ def main():
     #handling the input args. This is kind of a mess in this version
     if args.i is None:
         print bcolors.FAIL + "Please enter an input file!" + bcolors.ENDC
+        quit()
+    if args.m is None:
+        print bcolors.OKGREEN + "Running in Simple Bash Cat mode" + bcolors.ENDC
+        mode = 1
+    elif args.m == "1":
+        print bcolors.OKGREEN + "Running in Simple Bash Cat mode" + bcolors.ENDC
+        mode = 1
+    elif args.m == "2":
+        print bcolors.OKGREEN + "Running in FFmpeg Cat mode" + bcolors.ENDC
+        mode = 2
+    else:
+        print bcolors.FAIL + "Please select a valid mode (1 or 2)!" + bcolors.ENDC
         quit()
     if args.f is None:
         output_format = "v210"
@@ -80,18 +93,28 @@ def main():
 
     ##move each vob over as a seperate file, adding each vob to a list to be concatenated
     print "Moving VOBs to Local directory..."
-    if move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
-        print "Finished moving VOBs to local directory!"
-    else:
-        print "No VOBs found. Quitting!"
+    if mode == '1':
+        if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
+            print "Finished moving VOBs to local directory!"
+        else:
+            print "No VOBs found. Quitting!"
+    if mode == '2'
+        if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
+            print "Finished moving VOBs to local directory!"
+        else:
+            print "No VOBs found. Quitting!"
 
-    #concatenate vobs into a sungle file, format of the user's selection
-    concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
+    if mode == '1':
+        #transcode vobs into the target format
+        cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
+    if mode == '2':
+        #concatenate vobs into a sungle file, format of the user's selection
+        ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
 
     #CLEANUP
     print "Removing Temporary Files..."
     #Delete all fo the leftover files
-    os.remove(args.i + ".mylist.txt")
+    #os.remove(args.i + ".mylist.txt")
     for the_file in os.listdir(args.i + ".VOBS"):
         file_path = os.path.join(args.i + ".VOBS", the_file)
         try:
@@ -125,8 +148,10 @@ def mount_Image(ISO_Path):
     mount_point = "/Volumes/" + mount_point
     mount_command = "hdiutil attach '" + ISO_Path + "' -mountpoint " + mount_point
     os.mkdir(mount_point)
-    run_command(mount_command)
-
+    hdiutil_return = run_command(mount_command)
+    if hdiutil_return == 1:
+        print("Mounting Failed. Quitting Script")
+        quit()
     return mount_point
 
 
@@ -138,7 +163,79 @@ def unmount_Image(mount_point):
 
 
 
-def move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
+def cat_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
+
+    file_name_root = (os.path.splitext(os.path.basename(first_file_path))[0])
+    input_vobList = []
+    input_discList = []
+    lastDiscNum = 1
+
+    #find all of the vobs we want to concatenate
+    for dirName, subdirList, fileList in os.walk(mount_point):
+        for fname in fileList:
+            if fname.split("_")[0] == "VTS" and fname.split(".")[-1] == "VOB":
+                discNum = fname.split("_")[1]
+                discNumInt = discNum.split("_")[0]
+                vobNum = fname.split("_")[-1]
+                vobNum = vobNum.split(".")[0]
+                vobNumInt = int(vobNum)
+                discNumInt = int(discNum)
+                if discNumInt == lastDiscNum:
+                    if vobNumInt > 0:
+                        input_vobList.append(dirName + "/" + fname)
+                if discNumInt > lastDiscNum:
+                    input_vobList.sort()
+                    input_discList.append(input_vobList)
+                    input_vobList = []
+                    if vobNumInt > 0:
+                        input_vobList.append(dirName + "/" + fname)
+                lastDiscNum = discNumInt
+
+
+    ##Returns False if there are no VOBs found, otherwise it moves on
+    if len(input_vobList) == 0:
+        has_vobs = False
+    else:
+        has_vobs = True
+        input_vobList.sort()
+        input_discList.append(input_vobList)
+
+      ##this portion performs the copy of the VOBs to the local storage. They are moved using the cat bash command
+
+    try:
+        delset_path = os.path.dirname(first_file_path)
+        os.mkdir(first_file_path + ".VOBS/")
+    except OSError:
+        pass
+
+#       Creating the cat command here
+
+    cat_command = ""
+    output_disc_count = 1
+    out_vob_path = first_file_path + ".VOBS/" + file_name_root
+
+    if len(input_discList) > 1:
+
+        for disc in input_discList:
+            cat_command += "/bin/cat "
+            for vob in disc:
+                cat_command += vob + " "
+            cat_command += "> '" + out_vob_path + "_" + str(output_disc_count) + ".vob' && "
+            output_disc_count += 1
+
+        cat_command = cat_command.strip(" &&")
+
+    else:
+        cat_command += "cat "
+        for disc in input_discList:
+            for vob in disc:
+                cat_command += vob + " "
+            cat_command += "> '" + out_vob_path + ".vob'"
+
+    run_command(cat_command)
+    return has_vobs
+
+def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
 
     input_vobList = []
 
@@ -198,7 +295,31 @@ def move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
 
     return has_vobs
 
-def concatenate_VOBS(first_file_path, transcode_string, output_ext, ffmpeg_command):
+def cat_transcode_VOBS(first_file_path, transcode_string, output_ext, ffmpeg_command):
+    extension = os.path.splitext(first_file_path)[1]
+    vob_folder_path = first_file_path + ".VOBS/"
+    vob_list = []
+    for v in os.listdir(vob_folder_path):
+        if not v.startswith('.'):
+            if v.endswith('.vob'):
+                vob_list.append(first_file_path + ".VOBS/" + v)
+
+    if len(vob_list) == 1:
+        output_path = first_file_path.replace(extension,output_ext)
+        ffmpeg_vob_concat_string = ffmpeg_command + " -i '" + vob_list[0] + "' -dn -map 0:v:0 -map 0:a:0 " + transcode_string + " '" + output_path + "'"
+        print ffmpeg_vob_concat_string
+        run_command(ffmpeg_vob_concat_string)
+    else:
+        inc = 1
+        for vob_path in vob_list:
+            output_path = first_file_path.replace(extension,"") + "_" + str(inc) + output_ext
+            ffmpeg_vob_concat_string = ffmpeg_command + " -i '" + vob_path + "' " + transcode_string + " '" + output_path + "'"
+            print ffmpeg_vob_concat_string
+            run_command(ffmpeg_vob_concat_string)
+            inc += 1
+
+
+def ffmpeg_concatenate_VOBS(first_file_path, transcode_string, output_ext, ffmpeg_command):
     catList = first_file_path + ".mylist.txt"
     extension = os.path.splitext(first_file_path)[1]
     output_path = first_file_path.replace(extension,output_ext)
