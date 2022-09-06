@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 # DVD Transcoder
 #Version History
-#   0.1.0 - 20220902
-#       New versio that just cats the vobs using bash then transcodes from there lol
+#   0.2.0 - 20220906
+#       Combined Bash Cat and FFmpeg Cat into a single script. 
+#
 #
 #
 #
@@ -81,7 +82,6 @@ def main():
     else:
         ffmpeg_command = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic "
 
-
     #print "Removing Temporary Files"
 
     #This parts mounts the iso
@@ -93,23 +93,20 @@ def main():
 
     ##move each vob over as a seperate file, adding each vob to a list to be concatenated
     print "Moving VOBs to Local directory..."
-    if mode == '1':
+    if mode == 1:
         if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
             print "Finished moving VOBs to local directory!"
+            #transcode vobs into the target format
+            cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
         else:
             print "No VOBs found. Quitting!"
-    if mode == '2'
+    elif mode == '2':
         if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
             print "Finished moving VOBs to local directory!"
+            #concatenate vobs into a sungle file, format of the user's selection
+            ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
         else:
             print "No VOBs found. Quitting!"
-
-    if mode == '1':
-        #transcode vobs into the target format
-        cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
-    if mode == '2':
-        #concatenate vobs into a sungle file, format of the user's selection
-        ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
 
     #CLEANUP
     print "Removing Temporary Files..."
