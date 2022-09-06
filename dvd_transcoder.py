@@ -3,7 +3,7 @@
 # DVD Transcoder
 #Version History
 #   0.2.0 - 20220906
-#       Combined Bash Cat and FFmpeg Cat into a single script. 
+#       Combined Bash Cat and FFmpeg Cat into a single script.
 #
 #
 #
@@ -100,7 +100,7 @@ def main():
             cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
         else:
             print "No VOBs found. Quitting!"
-    elif mode == '2':
+    elif mode == 2:
         if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
             print "Finished moving VOBs to local directory!"
             #concatenate vobs into a sungle file, format of the user's selection
