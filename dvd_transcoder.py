@@ -108,17 +108,8 @@ def main():
 
         #CLEANUP
         print("Removing Temporary Files...")
+        remove_temp_files(args.i)
         #Delete all fo the leftover files
-        #os.remove(args.i + ".mylist.txt")
-        for the_file in os.listdir(args.i + ".VOBS"):
-            file_path = os.path.join(args.i + ".VOBS", the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-            except Exception as e:
-                print(e)
-        os.rmdir(args.i + ".VOBS")
         print("Finished Removing Temporary Files!")
 
         #This parts unmounts the iso
@@ -131,15 +122,7 @@ def main():
         print(bcolors.FAIL + "User has quit the script" + bcolors.ENDC)
         try:
             unmount_Image(mount_point)
-            for the_file in os.listdir(args.i + ".VOBS"):
-                file_path = os.path.join(args.i + ".VOBS", the_file)
-                try:
-                    if os.path.isfile(file_path):
-                        os.unlink(file_path)
-                    #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-                except Exception as e:
-                    print(e)
-            os.rmdir(args.i + ".VOBS")
+            remove_temp_files(args.i)
         except:
             pass
         quit()
@@ -155,14 +138,18 @@ def mount_Image(ISO_Path):
         mount_increment = mount_increment + 1
 
     ##mount ISO
-    mount_point = "/Volumes/" + mount_point
-    mount_command = "hdiutil attach '" + ISO_Path + "' -mountpoint " + mount_point
-    os.mkdir(mount_point)
-    hdiutil_return = run_command(mount_command)
-    if hdiutil_return == 1:
-        print("Mounting Failed. Quitting Script")
+    try:
+        mount_point = "/Volumes/" + mount_point
+        mount_command = "hdiutil attach '" + ISO_Path + "' -mountpoint " + mount_point
+        os.mkdir(mount_point)
+        hdiutil_return = run_command(mount_command)
+        if hdiutil_return == 1:
+            print(bcolors.FAIL + "Mounting Failed. Quitting Script" + bcolors.ENDC)
+            quit()
+        return mount_point
+    except PermissionError:
+        print(bcolors.FAIL + "Mounting failed due to permission error. Try running script in sudo mode" + bcolors.ENDC)
         quit()
-    return mount_point
 
 
 def unmount_Image(mount_point):
@@ -340,9 +327,20 @@ def run_command(command):
     try:
         run = subprocess.call([command], shell=True)
         return run
-    except Exception, e:
+    except Exception as e:
         print(e)
         return e
+
+def remove_temp_files(input_dir):
+    for the_file in os.listdir(input_dir + ".VOBS"):
+        file_path = os.path.join(input_dir + ".VOBS", the_file)
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+            #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+        except Exception as e:
+            print(e)
+    os.rmdir(input_dir + ".VOBS")
 
 # Used to make colored text
 class bcolors:
