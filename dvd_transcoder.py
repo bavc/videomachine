@@ -86,21 +86,24 @@ def main():
     ##this part processes the vobs
     try:
         ##move each vob over as a seperate file, adding each vob to a list to be concatenated
-        print("Moving VOBs to Local directory...")
         if mode == 1:
+            print("Moving VOBs to Local directory and concatonating...")
             if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
-                print("Finished concatonating and moving VOBs to local directory!")
+                print("Finished moving VOBs to local directory and concatonating!")
                 #transcode vobs into the target format
-                print("Transcoding VOBS to %s!" % (output_format))
+                print("Transcoding VOBS to %s..." % (output_format))
                 cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
+                print("Finished transcoding VOBS to %s!" % (output_format))
             else:
                 print("No VOBs found. Quitting!")
         elif mode == 2:
+            print("Transcoding VOBs to %s and moving to local directory..." % (output_format))
             if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command, transcode_string, output_ext):
-                print("Finished moving VOBs to local directory!")
+                print("Finished transcoding VOBs to %s and moving to local directory..." % (output_format))
                 #concatenate vobs into a sungle file, format of the user's selection
-                print("Concatonating VOBS to %s!" % (output_format))
+                print("Concatonating %s files..." % (output_format))
                 ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
+                print("Finished concatonating %s files!" % (output_format))
             else:
                 print("No VOBs found. Quitting!")
 
