@@ -50,8 +50,8 @@ def main():
         print bcolors.FAIL + "Please select a valid mode (1 or 2)!" + bcolors.ENDC
         quit()
     if args.f is None:
-        output_format = "v210"
-        transcode_string = " -movflags write_colr+faststart -color_primaries smpte170m -color_trc bt709 -colorspace smpte170m -color_range mpeg -vf 'setfield=bff,setdar=4/3' -c:v v210 -c:a pcm_s24l -ar 4800 "
+        output_format = "ProRes"
+        transcode_string = " -c:v prores -profile:v 3 -c:a pcm_s24le -ar 48000 "
         output_ext = ".mov"
     elif "v210" in args.f:
         output_format = "v210"
@@ -90,46 +90,52 @@ def main():
     print "Finished Mounting ISO!"
 
     ##this part processes the vobs
+    try:
+        ##move each vob over as a seperate file, adding each vob to a list to be concatenated
+        print "Moving VOBs to Local directory..."
+        if mode == 1:
+            if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
+                print "Finished moving VOBs to local directory!"
+                #transcode vobs into the target format
+                cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
+            else:
+                print "No VOBs found. Quitting!"
+        elif mode == 2:
+            if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command, transcode_string, output_ext):
+                print "Finished moving VOBs to local directory!"
+                #concatenate vobs into a sungle file, format of the user's selection
+                ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
+            else:
+                print "No VOBs found. Quitting!"
 
-    ##move each vob over as a seperate file, adding each vob to a list to be concatenated
-    print "Moving VOBs to Local directory..."
-    if mode == 1:
-        if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
-            print "Finished moving VOBs to local directory!"
-            #transcode vobs into the target format
-            cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
-        else:
-            print "No VOBs found. Quitting!"
-    elif mode == 2:
-        if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
-            print "Finished moving VOBs to local directory!"
-            #concatenate vobs into a sungle file, format of the user's selection
-            ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
-        else:
-            print "No VOBs found. Quitting!"
+        #CLEANUP
+        print "Removing Temporary Files..."
+        #Delete all fo the leftover files
+        #os.remove(args.i + ".mylist.txt")
+        for the_file in os.listdir(args.i + ".VOBS"):
+            file_path = os.path.join(args.i + ".VOBS", the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+            except Exception as e:
+                print(e)
+        os.rmdir(args.i + ".VOBS")
+        print "Finished Removing Temporary Files!"
 
-    #CLEANUP
-    print "Removing Temporary Files..."
-    #Delete all fo the leftover files
-    #os.remove(args.i + ".mylist.txt")
-    for the_file in os.listdir(args.i + ".VOBS"):
-        file_path = os.path.join(args.i + ".VOBS", the_file)
+        #This parts unmounts the iso
+        print "Unmounting ISO"
+        unmount_Image(mount_point)
+        print "Finished Unmounting ISO!"
+
+        return
+    except KeyboardInterrupt:
+        print bcolors.FAIL + "User has quit the script" + bcolors.ENDC
         try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-            #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-        except Exception as e:
-            print(e)
-    os.rmdir(args.i + ".VOBS")
-    print "Finished Removing Temporary Files!"
-
-    #This parts unmounts the iso
-    print "Unmounting ISO"
-    unmount_Image(mount_point)
-    print "Finished Unmounting ISO!"
-
-    return
-
+            unmount_Image(mount_point)
+        except:
+            pass
+        quit()
 
 def mount_Image(ISO_Path):
     mount_point_exists = True
@@ -232,7 +238,7 @@ def cat_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
     run_command(cat_command)
     return has_vobs
 
-def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
+def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command, transcode_string, output_ext):
 
     input_vobList = []
 
@@ -267,11 +273,13 @@ def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
     iterCount = 1
     for v in input_vobList:
         v_name = v.split("/")[-1]
+        v_name = v_name.replace('.VOB',output_ext)
         out_vob_path = first_file_path + ".VOBS/" + v_name
         #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"        #original without more recent additions
         #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with just tbs fix
         #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -af apad -c:v copy -c:a ac3 -ar 48000 -shortest -avoid_negative_ts make_zero -fflags +genpts -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with only audio pad
-        ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -af apad -c:v copy -c:a ac3 -ar 48000 -shortest -avoid_negative_ts make_zero -fflags +genpts -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with tbs fix and audio pad
+        ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -af apad -shortest -avoid_negative_ts make_zero -fflags +genpts -b:a 192k -y " + transcode_string + " '" + out_vob_path + "'"    #version with tbs fix and audio pad
+        print(ffmpeg_vob_copy_string)
         run_command(ffmpeg_vob_copy_string)
 
 
@@ -285,6 +293,7 @@ def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command):
     f = open(first_file_path + ".mylist.txt", "w")
     for v in input_vobList:
         v_name = v.split("/")[-1]
+        v_name = v_name.replace('.VOB',output_ext)
         out_vob_path = first_file_path + ".VOBS/" + v_name
         f.write("file '" + out_vob_path + "'")
         f.write("\n")
@@ -320,7 +329,7 @@ def ffmpeg_concatenate_VOBS(first_file_path, transcode_string, output_ext, ffmpe
     catList = first_file_path + ".mylist.txt"
     extension = os.path.splitext(first_file_path)[1]
     output_path = first_file_path.replace(extension,output_ext)
-    ffmpeg_vob_concat_string = ffmpeg_command + " -vsync 0 -f concat -safe 0 -i '" + catList + "' " + transcode_string + " '" + output_path + "'"
+    ffmpeg_vob_concat_string = ffmpeg_command + " -f concat -safe 0 -i '" + catList + "' -c copy '" + output_path + "'"
     print ffmpeg_vob_concat_string
     run_command(ffmpeg_vob_concat_string)
 
