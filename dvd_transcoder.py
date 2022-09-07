@@ -119,6 +119,8 @@ def main():
         print("Finished Unmounting ISO!")
 
         return
+
+    #If the user quits the script mid-processes the script cleans up after itself
     except KeyboardInterrupt:
         print(bcolors.FAIL + "User has quit the script" + bcolors.ENDC)
         try:
@@ -127,6 +129,8 @@ def main():
         except:
             pass
         quit()
+
+# FUNCTION DEFINITIONS
 
 def mount_Image(ISO_Path):
     mount_point_exists = True
@@ -156,7 +160,7 @@ def mount_Image(ISO_Path):
 def unmount_Image(mount_point):
     unmount_command = "hdiutil detach '" + mount_point + "'"
     run_command(unmount_command)
-    ##os.remove(mount_point) thought we needed this but i guess not...
+    ##os.remove(mount_point)     #thought we needed this but i guess not...
     return True
 
 
@@ -278,10 +282,7 @@ def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command, tran
 
 
     ##see if mylist already exists, if so delete it.
-    try:
-        os.remove(first_file_path + ".mylist.txt")
-    except OSError:
-        pass
+    remove_cat_list(first_file_path)
 
     #writing list of vobs to concat
     f = open(first_file_path + ".mylist.txt", "w")
@@ -316,13 +317,13 @@ def cat_transcode_VOBS(first_file_path, transcode_string, output_ext, ffmpeg_com
             run_command(ffmpeg_vob_concat_string)
             inc += 1
 
-
 def ffmpeg_concatenate_VOBS(first_file_path, transcode_string, output_ext, ffmpeg_command):
     catList = first_file_path + ".mylist.txt"
     extension = os.path.splitext(first_file_path)[1]
     output_path = first_file_path.replace(extension,output_ext)
     ffmpeg_vob_concat_string = ffmpeg_command + " -f concat -safe 0 -i '" + catList + "' -c copy '" + output_path + "'"
     run_command(ffmpeg_vob_concat_string)
+    remove_cat_list(first_file_path)
 
 def run_command(command):
     try:
@@ -342,6 +343,14 @@ def remove_temp_files(input_dir):
         except Exception as e:
             print(e)
     os.rmdir(input_dir + ".VOBS")
+    remove_cat_list(input_dir)
+
+def remove_cat_list(input_file):
+    try:
+        os.remove(input_file + ".mylist.txt")
+        print("Removing Cat List")
+    except OSError:
+        pass
 
 # Used to make colored text
 class bcolors:
