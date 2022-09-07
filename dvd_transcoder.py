@@ -35,19 +35,19 @@ def main():
 
     #handling the input args. This is kind of a mess in this version
     if args.i is None:
-        print bcolors.FAIL + "Please enter an input file!" + bcolors.ENDC
+        print(bcolors.FAIL + "Please enter an input file!" + bcolors.ENDC)
         quit()
     if args.m is None:
-        print bcolors.OKGREEN + "Running in Simple Bash Cat mode" + bcolors.ENDC
+        print(bcolors.OKGREEN + "Running in Simple Bash Cat mode" + bcolors.ENDC)
         mode = 1
     elif args.m == "1":
-        print bcolors.OKGREEN + "Running in Simple Bash Cat mode" + bcolors.ENDC
+        print(bcolors.OKGREEN + "Running in Simple Bash Cat mode" + bcolors.ENDC)
         mode = 1
     elif args.m == "2":
-        print bcolors.OKGREEN + "Running in FFmpeg Cat mode" + bcolors.ENDC
+        print(bcolors.OKGREEN + "Running in FFmpeg Cat mode" + bcolors.ENDC)
         mode = 2
     else:
-        print bcolors.FAIL + "Please select a valid mode (1 or 2)!" + bcolors.ENDC
+        print(bcolors.FAIL + "Please select a valid mode (1 or 2)!" + bcolors.ENDC)
         quit()
     if args.f is None:
         output_format = "ProRes"
@@ -78,7 +78,7 @@ def main():
 
     if args.v:
         ffmpeg_command = "/usr/local/bin/ffmpeg "
-        print "Running in Verbose Mode"
+        print("Running in Verbose Mode")
     else:
         ffmpeg_command = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic "
 
@@ -288,7 +288,6 @@ def ffmpeg_move_VOBS_to_local(first_file_path, mount_point, ffmpeg_command, tran
         #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with just tbs fix
         #ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -af apad -c:v copy -c:a ac3 -ar 48000 -shortest -avoid_negative_ts make_zero -fflags +genpts -f vob -b:v 9M -b:a 192k -y '" + out_vob_path + "'"    #version with only audio pad
         ffmpeg_vob_copy_string = ffmpeg_command + " -i " + v + " -map 0:v:0 -map 0:a:0 -video_track_timescale 90000 -af apad -shortest -avoid_negative_ts make_zero -fflags +genpts -b:a 192k -y " + transcode_string + " '" + out_vob_path + "'"    #version with tbs fix and audio pad
-        print(ffmpeg_vob_copy_string)
         run_command(ffmpeg_vob_copy_string)
 
 
@@ -322,14 +321,12 @@ def cat_transcode_VOBS(first_file_path, transcode_string, output_ext, ffmpeg_com
     if len(vob_list) == 1:
         output_path = first_file_path.replace(extension,output_ext)
         ffmpeg_vob_concat_string = ffmpeg_command + " -i '" + vob_list[0] + "' -dn -map 0:v:0 -map 0:a:0 " + transcode_string + " '" + output_path + "'"
-        print ffmpeg_vob_concat_string
         run_command(ffmpeg_vob_concat_string)
     else:
         inc = 1
         for vob_path in vob_list:
             output_path = first_file_path.replace(extension,"") + "_" + str(inc) + output_ext
             ffmpeg_vob_concat_string = ffmpeg_command + " -i '" + vob_path + "' " + transcode_string + " '" + output_path + "'"
-            print ffmpeg_vob_concat_string
             run_command(ffmpeg_vob_concat_string)
             inc += 1
 
@@ -339,7 +336,6 @@ def ffmpeg_concatenate_VOBS(first_file_path, transcode_string, output_ext, ffmpe
     extension = os.path.splitext(first_file_path)[1]
     output_path = first_file_path.replace(extension,output_ext)
     ffmpeg_vob_concat_string = ffmpeg_command + " -f concat -safe 0 -i '" + catList + "' -c copy '" + output_path + "'"
-    print ffmpeg_vob_concat_string
     run_command(ffmpeg_vob_concat_string)
 
 def run_command(command):
@@ -347,7 +343,7 @@ def run_command(command):
         run = subprocess.call([command], shell=True)
         return run
     except Exception, e:
-        print e
+        print(e)
         return e
 
 # Used to make colored text
