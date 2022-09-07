@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# DVD Transcoder
-#Version History
+# BAVC DVD Transcoder
+# Version History
+#   1.0.0 - 20220907
+#       improved error handling, removed old python2 code, removed unused imports. Prime Time!
 #   0.2.0 - 20220906
 #       Combined Bash Cat and FFmpeg Cat into a single script.
 #
