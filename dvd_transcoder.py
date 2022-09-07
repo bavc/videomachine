@@ -10,13 +10,8 @@
 #
 # import modules used here -- sys is a very standard one
 import os, sys
-import datetime
-import csv                          # used for creating the csv
 import subprocess                   # used for running ffmpeg, qcli, and rsync
-import shlex                        # used for properly splitting the ffmpeg/rsync strings
 import argparse                     # used for parsing input arguments
-import time
-
 def main():
 
 
@@ -29,7 +24,6 @@ def main():
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional, defaults to the same as the input)")
     parser.add_argument('-m','--mode',dest='m', help="Selects concatenation mode. 1 = Simple Bash Cat, 2 = FFmpeg Cat")
     parser.add_argument('-v','--verbose',dest='v',action='store_true',default=False,help='run in verbose mode (including ffmpeg info)')
-    #parser.add_argument('-c','--csvname',dest='c', help="the name of the csv file (optional)")
     args = parser.parse_args()
 
 
