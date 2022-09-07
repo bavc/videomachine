@@ -82,34 +82,32 @@ def main():
     else:
         ffmpeg_command = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic "
 
-    #print "Removing Temporary Files"
-
     #This parts mounts the iso
-    print "Mounting ISO..."
+    print("Mounting ISO...")
     mount_point = mount_Image(args.i)
-    print "Finished Mounting ISO!"
+    print("Finished Mounting ISO!")
 
     ##this part processes the vobs
     try:
         ##move each vob over as a seperate file, adding each vob to a list to be concatenated
-        print "Moving VOBs to Local directory..."
+        print("Moving VOBs to Local directory...")
         if mode == 1:
             if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
-                print "Finished moving VOBs to local directory!"
+                print("Finished moving VOBs to local directory!")
                 #transcode vobs into the target format
                 cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
             else:
-                print "No VOBs found. Quitting!"
+                print("No VOBs found. Quitting!")
         elif mode == 2:
             if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command, transcode_string, output_ext):
-                print "Finished moving VOBs to local directory!"
+                print("Finished moving VOBs to local directory!")
                 #concatenate vobs into a sungle file, format of the user's selection
                 ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
             else:
-                print "No VOBs found. Quitting!"
+                print("No VOBs found. Quitting!")
 
         #CLEANUP
-        print "Removing Temporary Files..."
+        print("Removing Temporary Files...")
         #Delete all fo the leftover files
         #os.remove(args.i + ".mylist.txt")
         for the_file in os.listdir(args.i + ".VOBS"):
@@ -121,16 +119,16 @@ def main():
             except Exception as e:
                 print(e)
         os.rmdir(args.i + ".VOBS")
-        print "Finished Removing Temporary Files!"
+        print("Finished Removing Temporary Files!")
 
         #This parts unmounts the iso
-        print "Unmounting ISO"
+        print("Unmounting ISO")
         unmount_Image(mount_point)
-        print "Finished Unmounting ISO!"
+        print("Finished Unmounting ISO!")
 
         return
     except KeyboardInterrupt:
-        print bcolors.FAIL + "User has quit the script" + bcolors.ENDC
+        print(bcolors.FAIL + "User has quit the script" + bcolors.ENDC)
         try:
             unmount_Image(mount_point)
             for the_file in os.listdir(args.i + ".VOBS"):
