@@ -89,8 +89,9 @@ def main():
         print("Moving VOBs to Local directory...")
         if mode == 1:
             if cat_move_VOBS_to_local(args.i, mount_point, ffmpeg_command):
-                print("Finished moving VOBs to local directory!")
+                print("Finished concatonating and moving VOBs to local directory!")
                 #transcode vobs into the target format
+                print("Transcoding VOBS to %s !" % (output_format))
                 cat_transcode_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
             else:
                 print("No VOBs found. Quitting!")
@@ -98,6 +99,7 @@ def main():
             if ffmpeg_move_VOBS_to_local(args.i, mount_point, ffmpeg_command, transcode_string, output_ext):
                 print("Finished moving VOBs to local directory!")
                 #concatenate vobs into a sungle file, format of the user's selection
+                print("Concatonating VOBS to %s !" % (output_format))
                 ffmpeg_concatenate_VOBS(args.i, transcode_string, output_ext, ffmpeg_command)
             else:
                 print("No VOBs found. Quitting!")
