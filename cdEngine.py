@@ -361,7 +361,11 @@ def insertBWAV(file_dict, filePath):
     # Formats Descrition to "Title; Date"
     if file_dict['audioMetaDict']['createdDate'] == "0001-01-01" and file_dict['audioMetaDict']['title'] == "":
         bwavDescrition = ""
+    elif file_dict['audioMetaDict']['createdDate'] == "1900-01-01" and file_dict['audioMetaDict']['title'] == "":
+        bwavDescrition = ""
     elif file_dict['audioMetaDict']['createdDate'] == "0001-01-01":
+        bwavDescrition = file_dict['audioMetaDict']['title']
+    elif file_dict['audioMetaDict']['createdDate'] == "1900-01-01":
         bwavDescrition = file_dict['audioMetaDict']['title']
     elif file_dict['audioMetaDict']['title'] == "":
         bwavDescrition = file_dict['audioMetaDict']['createdDate']
