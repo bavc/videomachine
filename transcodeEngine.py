@@ -1012,15 +1012,20 @@ def getAudioMetadata(file_dict, filePath, barcode):
         audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
     filename = os.path.basename(filePath)
     if audioMetaDict['title'] == None:
-        audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ", if any (No apostrophes or quotes please!): " + bcolors.ENDC)
+        audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ": " + bcolors.ENDC)
+        audioMetaDict['title'] = audioMetaDict['title'].replace("\"", "\\\"")
     if audioMetaDict['createdDate'] == None:
         audioMetaDict['createdDate'] = input(bcolors.OKBLUE + "Please enter the Original Creation Date of this object, if any, in the format YYYY-MM-DD: " + bcolors.ENDC)
+        audioMetaDict['createdDate'] = audioMetaDict['createdDate'].replace("\"", "\\\"")
     if audioMetaDict['digiDate'] == None:
         audioMetaDict['digiDate'] = input(bcolors.OKBLUE + "Please enter the Digitization Date of this object YYYY-MM-DD: " + bcolors.ENDC)
+        audioMetaDict['digiDate'] = audioMetaDict['digiDate'].replace("\"", "\\\"")
     if audioMetaDict['artistName'] == None:
         audioMetaDict['artistName'] = input(bcolors.OKBLUE + "Please enter the Arist/Producer of this object: " + bcolors.ENDC)
+        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("\"", "\\\"")
     if audioMetaDict['albumName'] == None:
         audioMetaDict['albumName'] = input(bcolors.OKBLUE + "Please enter the Collection/Album name of this object: " + bcolors.ENDC)
+        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("\"", "\\\"")
     audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
     if audioMetaDict['signalChain'] == None:
         userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n[10] 103628-Sony-TCD-D7\n[11] 103584-Tascam-122MKIII\n\n " + bcolors.ENDC)
@@ -1185,7 +1190,7 @@ def insertBWAV(file_dict, filePath):
     if codeHistLen % 2 != 0:
         bwavCodingHistory = bwavCodingHistory + " "
 
-    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description='" + bwavDescription + "' --Originator='" + bwavOriginator + "' --OriginationDate='" + bwavOriginationDate + "' --IDIT='" + bwavOriginationDate + "' --ICRD='" + ICRD + "' --INAM='" + INAM + "' --ISRC='" + ISRC + "' --ICMT='" + ICMT +"' --ICOP='" + ICOP + "' --ISFT='REAPER' --ITCH='BAVC' --OriginationTime='00:00:00' --Timereference='00:00:00.000' --OriginatorReference='" + bwavOriginatorReference + "' --UMID='" + bwavUMID + "' --History='" + bwavCodingHistory + "' '" + filePath + "'"
+    bwfString = "bwfmetaedit --accept-nopadding --specialchars --Description=\"" + bwavDescription + "\" --Originator=\"" + bwavOriginator + "\" --OriginationDate=\"" + bwavOriginationDate + "\" --IDIT=\"" + bwavOriginationDate + "\" --ICRD=\"" + ICRD + "\" --INAM=\"" + INAM + "\" --ISRC=\"" + ISRC + "\" --ICMT=\"" + ICMT +"\" --ICOP=\"" + ICOP + "\" --ISFT=\"REAPER\" --ITCH=\"BAVC\" --OriginationTime=\"00:00:00\" --Timereference=\"00:00:00.000\" --OriginatorReference=\"" + bwavOriginatorReference + "\" --UMID=\"" + bwavUMID + "\" --History=\"" + bwavCodingHistory + "\" \"" + filePath + "\""
     runCommand(bwfString)
 
 # Inserting ID3 metadata in master audio files
@@ -1196,7 +1201,7 @@ def insertID3(audioMetaDict, filePath):
     id3Title = audioMetaDict['title']
     id3Year = audioMetaDict['yearDate']
 
-    id3String = "id3v2 -a '" + id3Artist + "' -A '" + id3Album + "' -t '" + id3Title + "' -y '" + id3Year + "' '" + filePath + "'"
+    id3String = "id3v2 -a \"" + id3Artist + "\" -A \"" + id3Album + "\" -t \"" + id3Title + "\" -y \"" + id3Year + "\" \"" + filePath + "\""
     runCommand(id3String)
 
 def insertMetaM4A(audioMetaDict, filePath):
@@ -1220,12 +1225,12 @@ def insertMetaM4A(audioMetaDict, filePath):
         M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "' "
 
     if "mp4" in filePath:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "' " + tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i \"" + filePath + "\" -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "\" " + tempFilePath + "\""
     else:
-        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i '" + filePath + "' -c copy " + M4A_Title + M4A_Comment + M4A_Copyright + "'" + tempFilePath + "'"
+        ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i \"" + filePath + "\" -c copy " + M4A_Title + M4A_Comment + M4A_Copyright + "\"" + tempFilePath + "\""
     runCommand(ffmpeg_string)
 
-    move_string = "mv '" + tempFilePath + "' '" + filePath + "'"
+    move_string = "mv \"" + tempFilePath + "\" \"" + filePath + "\""
     runCommand(move_string)
     #os.rename(tempFilePath, filePath)
 
@@ -1300,32 +1305,32 @@ def getSFAudioMD(Barcode, audioMetaDict):
     if audioMetaDict['title'] is None:
         audioMetaDict['title'] = ""
     else:
-        audioMetaDict['title'] = audioMetaDict['title'].replace("'", "")
+        audioMetaDict['title'] = audioMetaDict['title'].replace("\"", "\\\"")
     audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
     if audioMetaDict['albumName'] is None:  #need to do this to make sure we get kill the script when these fields are empty
         audioMetaDict['albumName'] = ""
     else:
-        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("'", "")
+        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("\"", "\\\"")
     audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
     if audioMetaDict['artistName'] is None:
         audioMetaDict['artistName'] = ""
     else:
-        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("'", "")
+        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("\"", "\\\"")
     audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c')
     if audioMetaDict['institution'] is None:
         audioMetaDict['institution'] = ""
     else:
-        audioMetaDict['institution'] = audioMetaDict['institution'].replace("'", "")
+        audioMetaDict['institution'] = audioMetaDict['institution'].replace("\"", "\\\"")
     audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c')
     if audioMetaDict['comment'] is None:
         audioMetaDict['comment'] = ""
     else:
-        audioMetaDict['comment'] = audioMetaDict['comment'].replace("'", "")
+        audioMetaDict['comment'] = audioMetaDict['comment'].replace("\"", "\\\"")
     audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c')
     if audioMetaDict['copyright'] is None:
         audioMetaDict['copyright'] = ""
     else:
-        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("'", "")
+        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("\"", "\\\"")
     audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
     audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
     audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
