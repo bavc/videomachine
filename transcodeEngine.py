@@ -1226,6 +1226,10 @@ def insertMetaM4A(audioMetaDict, filePath):
     else:
         M4A_Copyright = " -metadata copyright=\"" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "\" "
 
+    if M4A_Title == " " and M4A_Comment == " " and M4A_Copyright == " ":
+        print(bcolors.OKBLUE +  "No embedded metadata entered in Salesforce. Skipping metadata embedding for Access File\n" + bcolors.ENDC)
+        return
+
     if "mp4" in filePath:
         ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i \"" + filePath + "\" -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "\"" + tempFilePath + "\""
     else:
@@ -1235,6 +1239,7 @@ def insertMetaM4A(audioMetaDict, filePath):
     move_string = "mv \"" + tempFilePath + "\" \"" + filePath + "\""
     runCommand(move_string)
     #os.rename(tempFilePath, filePath)
+    return
 
 
 # Used for seeing if a string represents an integer
