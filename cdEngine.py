@@ -276,9 +276,10 @@ def createMP3(file_dict, wav_path, args):
                 to_string = " -to " + cue_tracks_list[w+1]
             ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -ss " + cue_tracks_list[w] + to_string + " -i '" + wav_path + "' -c:a libmp3lame -b:a 320k -write_xing 0 -ac 2 -y '" + split_mp3_path + "'"
             runCommand(ffmpeg_string)
-            w=w+1
             #insert metadat into mp3 we just created
-            insertID3(file_dict["audioMetaDict"], split_mp3_path)
+            insertID3(file_dict["audioMetaDict"], split_mp3_path, w+1, len(cue_tracks_list) - 1)
+            w=w+1
+
         if args.m:
             #if run with m flag we'll also make an unsplit mp3
             mp3_path = wav_path.replace(".wav", ".mp3")
@@ -286,7 +287,7 @@ def createMP3(file_dict, wav_path, args):
             runCommand(ffmpeg_string)
 
             #insert metadat into mp3 we just created
-            insertID3(file_dict["audioMetaDict"], mp3_path)
+            insertID3(file_dict["audioMetaDict"], mp3_path, None, None)
 
     else:
         mp3_path = wav_path.replace(".wav", ".mp3")
@@ -294,7 +295,7 @@ def createMP3(file_dict, wav_path, args):
         runCommand(ffmpeg_string)
 
         #insert metadat into mp3 we just created
-        insertID3(file_dict["audioMetaDict"], mp3_path)
+        insertID3(file_dict["audioMetaDict"], mp3_path, None, None)
 
 def parseCue(wav_path):
     cue_path = wav_path.replace(".wav", ".cue")
@@ -345,15 +346,21 @@ def parseCue(wav_path):
     return formatted_timestamp_list
 
 
-def insertID3(audioMetaDict, filePath):
+def insertID3(audioMetaDict, filePath, track, num_tracks):
     print(bcolors.OKBLUE +  "Inserting metadata into file: " + os.path.basename(filePath) + "\n" + bcolors.ENDC)
 
     id3Artist = audioMetaDict['artistName']
     id3Album = audioMetaDict['albumName']
     id3Title = audioMetaDict['title']
     id3Year = audioMetaDict['yearDate']
+    if track and num_tracks:
+        id3Track = " -T " + str(track) + "/" + str(num_tracks) + " "
+    elif track:
+        id3Track = " -T " + str(track) + " "
+    else:
+        id3Track = " "
 
-    id3String = "id3v2 -a \"" + id3Artist + "\" -A \"" + id3Album + "\" -t \"" + id3Title + "\" -y \"" + id3Year + "\" \"" + filePath + "\""
+    id3String = "id3v2 -a \"" + id3Artist + "\" -A \"" + id3Album + "\" -t \"" + id3Title + "\" -y \"" + id3Year + "\"" + id3Track + "\"" + filePath + "\""
     runCommand(id3String)
 
 def insertBWAV(file_dict, filePath):
