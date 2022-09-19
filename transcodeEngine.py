@@ -117,6 +117,8 @@
 #       - Fails gracefully when encountering a broken file
 #   1.6.7 - 20220822
 #       - Fixed metadata date handling when there is no creation date
+#   1.6.7 - 20220919
+#       - Fixed metadata date handling for single and double quotes in user entry or salesforce fields
 #
 #   STILL NEEDS
 #       Logging
@@ -1210,19 +1212,19 @@ def insertMetaM4A(audioMetaDict, filePath):
     if audioMetaDict['title'] == "":
         M4A_Title = " "
     else:
-        M4A_Title = "  -metadata title='" + audioMetaDict['title'] + "' "
+        M4A_Title = "  -metadata title=\"" + audioMetaDict['title'] + "\" "
     if audioMetaDict['comment'] == "":
         M4A_Comment = " "
     else:
-        M4A_Comment = " -metadata comment='" + audioMetaDict['comment'] + "' "
+        M4A_Comment = " -metadata comment=\"" + audioMetaDict['comment'] + "\" "
     if audioMetaDict['copyright'] == "" and audioMetaDict['institution'] == "":
         M4A_Copyright = " "
     elif audioMetaDict['copyright'] != "" and audioMetaDict['institution'] == "":
-        M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + "' "
+        M4A_Copyright = " -metadata copyright=\"" + audioMetaDict['copyright'] + "\" "
     elif audioMetaDict['copyright'] == "" and audioMetaDict['institution'] != "":
-        M4A_Copyright = " -metadata copyright='" + audioMetaDict['institution'] + "' "
+        M4A_Copyright = " -metadata copyright=\"" + audioMetaDict['institution'] + "\" "
     else:
-        M4A_Copyright = " -metadata copyright='" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "' "
+        M4A_Copyright = " -metadata copyright=\"" + audioMetaDict['copyright'] + " - " + audioMetaDict['institution'] + "\" "
 
     if "mp4" in filePath:
         ffmpeg_string = "/usr/local/bin/ffmpeg -hide_banner -loglevel panic -i \"" + filePath + "\" -c copy -movflags faststart " + M4A_Title + M4A_Comment + M4A_Copyright + "\" " + tempFilePath + "\""
