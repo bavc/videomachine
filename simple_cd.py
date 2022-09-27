@@ -36,8 +36,8 @@ def main():
     parser.add_argument('-i','--input',dest='i', help="the path to the input directory or files")
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional)")
     parser.add_argument('-c','--csvname',dest='c', help="the name of the csv file (optional)")
-    parser.add_argument('-s','--Split_Tracks',dest='s',action ='store_true',default=False, help="Splits the output MP3 files into tracks according to CUE file")
-    parser.add_argument('-m','--Make-Full-MP3',dest='m',action ='store_true',default=False, help="Makes an unsplit MP3 in addition to split MP3 files. This flag only works if the -s flag is also run")
+    parser.add_argument('-s','--Split_Tracks',dest='s',action ='store_true',default=False, help="Splits the output MP3s files into tracks according to CUE file")
+    parser.add_argument('-m','--Make-Full-MP3',dest='m',action ='store_true',default=False, help="Makes an unsplit MP3 in addition to the split MP3 files. This flag only works if the -s flag is also run")
     args = parser.parse_args()
 
     #handling the input args. This is kind of a mess in this version
