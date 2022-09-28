@@ -32,7 +32,7 @@ def main():
     media_info_list = []
 
     ####init the stuff from the cli########
-    parser = argparse.ArgumentParser(description="Harvests Mediainfo of input file or files in input directory")
+    parser = argparse.ArgumentParser(description="Processes CD files ripped from XLD and inserts user-entered metadata into the files")
     parser.add_argument('-i','--input',dest='i', help="the path to the input directory or files")
     parser.add_argument('-o','--output',dest='o', help="the output file path (optional)")
     parser.add_argument('-c','--csvname',dest='c', help="the name of the csv file (optional)")
