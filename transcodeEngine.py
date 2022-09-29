@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.6
+#Current Version: 1.6.7
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -119,6 +119,9 @@
 #       - Fixed metadata date handling when there is no creation date
 #   1.6.7 - 20220919
 #       - Fixed metadata date handling for single and double quotes in user entry or salesforce fields
+#   1.6.8 - 20220929
+#       - Added "tamwag" to text in filename that will trigger BAVC barcode removal from metadata.
+#       - at some point this will need to be connected to a switch in salesforce
 #
 #   STILL NEEDS
 #       Logging
