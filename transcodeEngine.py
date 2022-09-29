@@ -525,6 +525,9 @@ def parseMediaInfo(filePath, media_info_text, hashType, sidecar, masterExtension
         elif "nyuarchives" in file_dict["instantiationIdentifierDigital__c"]:
             print(bcolors.OKGREEN + "Renaming File for NYU Specs" + bcolors.ENDC)
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
+        elif "tamwag" in file_dict["instantiationIdentifierDigital__c"]:
+            print(bcolors.OKGREEN + "Renaming File for NYU Specs" + bcolors.ENDC)
+            file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
         elif "_prsv" in file_dict["instantiationIdentifierDigital__c"]:
             print(bcolors.OKGREEN + "Renaming File for CA-R Specs" + bcolors.ENDC)
             file_dict["instantiationIdentifierDigital__c"] = file_dict["instantiationIdentifierDigital__c"].replace("BAVC" + file_dict["Name"] + "_","")
