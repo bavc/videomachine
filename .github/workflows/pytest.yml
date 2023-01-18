@@ -1,0 +1,22 @@
+on: [push, pull_request]
+name: Pytest
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+        python-version: ['3.7', '3.8' ,'3.9', '3.10', '3.11']
+      fail-fast: false
+    name: Python ${{ matrix.python-version }} ${{ matrix.os }} ${{ matrix.frontend }} build
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install requirements
+        run: |
+          pip install pytest
+      - name: Run pytest
+        run: python -m pytest
+
