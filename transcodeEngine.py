@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#Current Version: 1.6.7
+#Current Version: 1.7.0
 #Version History
 #   0.1.0 - 20171113
 #       Got it mostly working. current known issues:
@@ -122,6 +122,10 @@
 #   1.6.8 - 20220929
 #       - Added "tamwag" to text in filename that will trigger BAVC barcode removal from metadata.
 #       - at some point this will need to be connected to a switch in salesforce
+#   1.7.0 - 2023019
+#       - Possibly my last update on this script as a BAVC employee!
+#       - Add better catches when SFInit fails. This way the script won't die if the network blinks out
+#       - Also added better error messages when SF connection fails
 #
 #   STILL NEEDS
 #       Logging
@@ -306,7 +310,7 @@ def main():
         # Make the mediainfo CSV
         print(bcolors.OKGREEN + "DONE! Creating CSV File " + "\n" + bcolors.ENDC)
         createCSV(media_info_list, csv_path)	# this processes a list with a single dict in it (this is the case that only one file was given as the input)
-        updateSalesForceCSV(csv_path, args.nsf)    # syncs CSV file to salesforce
+        updateSalesForceCSV(csv_path, args.nsf, mediaInfoDict["Name"])    # syncs CSV file to salesforce
 
         # Rsync the File
         inPathList = []
@@ -479,7 +483,7 @@ def main():
         print(bcolors.OKGREEN + "DONE! Creating CSV File " + "\n\n" + bcolors.ENDC)
 
         createCSV(media_info_list,csv_path)	# this instances process the big list of dicts
-        updateSalesForceCSV(csv_path, args.nsf) # syncs CSV file to salesforce
+        updateSalesForceCSV(csv_path, args.nsf, mediaInfoDict["Name"]) # syncs CSV file to salesforce
 
         # Rsync the Files that were trasncoded
         moveToBackup(inPathList, processDict, args.nsf)
@@ -1017,7 +1021,7 @@ def getAudioMetadata(file_dict, filePath, barcode):
         audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
     except:
         print(bcolors.WARNING + "\nSalesforce Connection Failed. Will get metadata manually" + bcolors.ENDC)
-        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
+        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None,'comment' : None,'copyright' : None,'institution' : None}
     filename = os.path.basename(filePath)
     if audioMetaDict['title'] == None:
         audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ": " + bcolors.ENDC)
@@ -1034,6 +1038,15 @@ def getAudioMetadata(file_dict, filePath, barcode):
     if audioMetaDict['albumName'] == None:
         audioMetaDict['albumName'] = input(bcolors.OKBLUE + "Please enter the Collection/Album name of this object: " + bcolors.ENDC)
         audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("\"", "\\\"")
+    if audioMetaDict['comment'] == None:
+        audioMetaDict['comment'] = input(bcolors.OKBLUE + "Please enter a Comment for this object: " + bcolors.ENDC)
+        audioMetaDict['comment'] = audioMetaDict['albumName'].replace("\"", "\\\"")
+    if audioMetaDict['copyright'] == None:
+        audioMetaDict['copyright'] = input(bcolors.OKBLUE + "Please enter Copyright info for this object: " + bcolors.ENDC)
+        audioMetaDict['copyright'] = audioMetaDict['albumName'].replace("\"", "\\\"")
+    if audioMetaDict['institution'] == None:
+        audioMetaDict['institution'] = input(bcolors.OKBLUE + "Please enter the name of the Instition that owns this object: " + bcolors.ENDC)
+        audioMetaDict['institution'] = audioMetaDict['albumName'].replace("\"", "\\\"")
     audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
     if audioMetaDict['signalChain'] == None:
         userChoiceNum = input(bcolors.OKBLUE + "Please select the Tape Deck used:  \n[1] 101029-Otari-MX-5050\n[2] 101030-Otari-MX-55\n[3] 103527-Tascam-34\n[4] 101589-Tascam-122 MKII\n[5] 103540-Panasonic-SV-3700\n[6] 103591-Sony-MDS-E10\n[7] 103590-Sony-MDS-E10\n[8] 102573-TASCAM-DA-20\n[9] B000525-Tascam-122MKIII\n[10] 103628-Sony-TCD-D7\n[11] 103584-Tascam-122MKIII\n\n " + bcolors.ENDC)
@@ -1052,10 +1065,11 @@ def getVideoMetadata(file_dict, filePath, barcode):
         audioMetaDict = getSFAudioMD(barcode, audioMetaDict)
     except:
         print(bcolors.WARNING + "\nSalesforce Connection Failed. Will get metadata manually" + bcolors.ENDC)
-        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None}
+        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None,'comment' : None,'copyright' : None,'institution' : None}
     filename = os.path.basename(filePath)
     if audioMetaDict['title'] == None:
-        audioMetaDict['title'] = ""
+        audioMetaDict['title'] = input(bcolors.OKBLUE + "Please enter the title of " + filename + ": " + bcolors.ENDC)
+        audioMetaDict['title'] = audioMetaDict['title'].replace("\"", "\\\"")
     if audioMetaDict['createdDate'] == None:
         audioMetaDict['createdDate'] = ""
     if audioMetaDict['digiDate'] == None:
@@ -1064,6 +1078,12 @@ def getVideoMetadata(file_dict, filePath, barcode):
         audioMetaDict['artistName'] = ""
     if audioMetaDict['albumName'] == None:
         audioMetaDict['albumName'] = ""
+    if audioMetaDict['comment'] == None:
+        audioMetaDict['comment'] = ""
+    if audioMetaDict['copyright'] == None:
+        audioMetaDict['copyright'] = ""
+    if audioMetaDict['institution'] == None:
+        audioMetaDict['institution'] = ""
     audioMetaDict['yearDate'] = audioMetaDict['createdDate'][:4]
     if audioMetaDict['signalChain'] == None:
         audioMetaDict['signalChain'] = ""
@@ -1262,16 +1282,22 @@ def updateSalesForceFileBackup(Barcode, NoSalesForce):
         print(bcolors.OKBLUE +  "Skipping SalesForce Sync Due to Runtime Flag\n" + bcolors.ENDC)
     else:
         sf = initSF()
-        insertLoadedData(sf,Barcode)
+        if not sf:
+            print(bcolors.FAIL + "\nSalesforce Connection Failed. Cannot Update 'On PresRAID' field for Barcode: " + Barcode + bcolors.ENDC)
+        else:
+            insertLoadedData(sf,Barcode)
 
 #prococesses CSV data and inserts it into salesforce
-def updateSalesForceCSV(csv_path, NoSalesForce):
+def updateSalesForceCSV(csv_path, NoSalesForce, Barcode):
     if NoSalesForce == True:
         print(bcolors.OKBLUE +  "Skipping SalesForce Sync Due to Runtime Flag\n" + bcolors.ENDC)
     else:
         sf = initSF()
-        dict_list = createDictList(csv_path)
-        insertDictlist(dict_list,sf)
+        if not sf:
+            print(bcolors.FAIL + "\nSalesforce Connection Failed. Cannot Update digital file metadata fields for Barcode: " + Barcode + bcolors.ENDC)
+        else:
+            dict_list = createDictList(csv_path)
+            insertDictlist(dict_list,sf)
 
 #connect to salesforce
 def initSF():
@@ -1281,8 +1307,8 @@ def initSF():
         sf = Salesforce(username=config.username,password=config.password,security_token=config.security_token)
         return sf
     except:
-        print(bcolors.FAIL + "\nSalesforce Connection Failed. Quitting Script" + bcolors.ENDC)
-        exit()
+        print(bcolors.FAIL + "\nSalesforce Connection Failed." + bcolors.ENDC)
+        return False
 
 #creates a list of dictionaries using the output CSV File
 def createDictList(input_csv):
@@ -1310,43 +1336,47 @@ def querySF(sf,barcode):
 #gets info to embed in file from the Salesforce record (WORK IN PROGRESS)
 def getSFAudioMD(Barcode, audioMetaDict):
     sf = initSF()
-    sfData = querySF(sf,Barcode)
-    recordID = sfData['records'][0]['Id']
-    sfRecord = sf.Preservation_Object__c.get(recordID)
-    audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None,'institution' : None,'comment' : None,'copyright' : None}
-    audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c')
-    if audioMetaDict['title'] is None:
-        audioMetaDict['title'] = ""
+    if not sf:
+        print(bcolors.FAIL + "\nSalesforce Connection Failed. Cannot harvest embedded metadata for Barcode: " + Barcode + bcolors.ENDC)
+        raise TypeError("Salesforce Connection Failed.")
     else:
-        audioMetaDict['title'] = audioMetaDict['title'].replace("\"", "\\\"")
-    audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
-    if audioMetaDict['albumName'] is None:  #need to do this to make sure we get kill the script when these fields are empty
-        audioMetaDict['albumName'] = ""
-    else:
-        audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("\"", "\\\"")
-    audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
-    if audioMetaDict['artistName'] is None:
-        audioMetaDict['artistName'] = ""
-    else:
-        audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("\"", "\\\"")
-    audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c')
-    if audioMetaDict['institution'] is None:
-        audioMetaDict['institution'] = ""
-    else:
-        audioMetaDict['institution'] = audioMetaDict['institution'].replace("\"", "\\\"")
-    audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c')
-    if audioMetaDict['comment'] is None:
-        audioMetaDict['comment'] = ""
-    else:
-        audioMetaDict['comment'] = audioMetaDict['comment'].replace("\"", "\\\"")
-    audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c')
-    if audioMetaDict['copyright'] is None:
-        audioMetaDict['copyright'] = ""
-    else:
-        audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("\"", "\\\"")
-    audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
-    audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
-    audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
+        sfData = querySF(sf,Barcode)
+        recordID = sfData['records'][0]['Id']
+        sfRecord = sf.Preservation_Object__c.get(recordID)
+        audioMetaDict = {'title': None, 'createdDate': None,'artistName': None,'albumName': None,'digiDate': '','signalChain' : None,'institution' : None,'comment' : None,'copyright' : None}
+        audioMetaDict['title'] = sfRecord.get('Audio_Metadata_Title__c')
+        if audioMetaDict['title'] is None:
+            audioMetaDict['title'] = ""
+        else:
+            audioMetaDict['title'] = audioMetaDict['title'].replace("\"", "\\\"")
+        audioMetaDict['albumName'] = sfRecord.get('Audio_Metadata_Album__c')
+        if audioMetaDict['albumName'] is None:  #need to do this to make sure we get kill the script when these fields are empty
+            audioMetaDict['albumName'] = ""
+        else:
+            audioMetaDict['albumName'] = audioMetaDict['albumName'].replace("\"", "\\\"")
+        audioMetaDict['artistName'] = sfRecord.get('Audio_Metadata_Artist__c')
+        if audioMetaDict['artistName'] is None:
+            audioMetaDict['artistName'] = ""
+        else:
+            audioMetaDict['artistName'] = audioMetaDict['artistName'].replace("\"", "\\\"")
+        audioMetaDict['institution'] = sfRecord.get('Embedded_Metadata_Institution__c')
+        if audioMetaDict['institution'] is None:
+            audioMetaDict['institution'] = ""
+        else:
+            audioMetaDict['institution'] = audioMetaDict['institution'].replace("\"", "\\\"")
+        audioMetaDict['comment'] = sfRecord.get('Embedded_Metadata_Comment__c')
+        if audioMetaDict['comment'] is None:
+            audioMetaDict['comment'] = ""
+        else:
+            audioMetaDict['comment'] = audioMetaDict['comment'].replace("\"", "\\\"")
+        audioMetaDict['copyright'] = sfRecord.get('Embedded_Metadata_Copyright__c')
+        if audioMetaDict['copyright'] is None:
+            audioMetaDict['copyright'] = ""
+        else:
+            audioMetaDict['copyright'] = audioMetaDict['copyright'].replace("\"", "\\\"")
+        audioMetaDict['signalChain'] = sfRecord.get('videoReproducingDevice__c')
+        audioMetaDict['digiDate'] = sfRecord.get('instantiationDate__c')
+        audioMetaDict['createdDate'] = convertDate(sfRecord.get('Audio_Metadata_Date__c'))
 
 
 
